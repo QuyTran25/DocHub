@@ -390,19 +390,20 @@ const AuthScreen = ({ onLogin }) => {
 };
 
 // 2. Upload Modal
-const UploadModal = ({ isOpen, onClose }) => {
+const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
   const [topic, setTopic] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     let interval;
-    if (isUploading && progress < 100) {
+    if (isUploading && progress > 0 && progress < 100) {
       interval = setInterval(() => setProgress(p => Math.min(p + 10, 100)), 300);
     } else if (progress === 100) {
       setTimeout(() => { 
@@ -412,6 +413,7 @@ const UploadModal = ({ isOpen, onClose }) => {
         setSelectedFile(null);
         setTopic('');
         setHashtags('');
+        setUploadError('');
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -422,10 +424,12 @@ const UploadModal = ({ isOpen, onClose }) => {
       const file = files[0];
       const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
       setSelectedFile({
+        rawFile: file,
         name: file.name,
         size: sizeInMB,
         type: file.type
       });
+      setUploadError('');
     }
   };
 
@@ -451,6 +455,82 @@ const UploadModal = ({ isOpen, onClose }) => {
 
   const handleInputClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const formatSize = (sizeInBytes) => {
+    if (!sizeInBytes) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = sizeInBytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`;
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile?.rawFile) {
+      setUploadError('Vui lòng chọn file trước khi tải lên');
+      return;
+    }
+
+    try {
+      setUploadError('');
+      setIsUploading(true);
+      setProgress(10);
+
+      const formData = new FormData();
+      formData.append('file', selectedFile.rawFile);
+      formData.append('isPublic', String(isPublic));
+      formData.append('topic', topic);
+      formData.append('hashtags', hashtags);
+      if (currentUser?.id) {
+        formData.append('ownerId', String(currentUser.id));
+      }
+
+      const response = await fetch('http://localhost:8080/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      setProgress(80);
+
+      const rawBody = await response.text();
+      let responseBody = {};
+      if (rawBody) {
+        try {
+          responseBody = JSON.parse(rawBody);
+        } catch {
+          responseBody = { message: rawBody };
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(responseBody?.message || 'Upload thất bại');
+      }
+
+      setProgress(100);
+
+      const normalizedFile = {
+        id: responseBody.id,
+        name: responseBody.fileName,
+        type: responseBody.fileType,
+        size: formatSize(responseBody.fileSize),
+        date: responseBody.createdAt ? responseBody.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        status: responseBody.isPublic ? 'public' : 'private',
+        tags: responseBody.hashtags
+          ? responseBody.hashtags.split(',').map(tag => tag.trim()).filter(Boolean)
+          : [],
+        ownerId: responseBody.ownerId,
+        owner: currentUser?.username,
+      };
+      onUploaded?.(normalizedFile);
+    } catch (error) {
+      setIsUploading(false);
+      setProgress(0);
+      setUploadError(error.message || 'Không thể tải lên file');
+    }
   };
 
   if (!isOpen) return null;
@@ -505,6 +585,12 @@ const UploadModal = ({ isOpen, onClose }) => {
               >
                 ✕
               </button>
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {uploadError}
             </div>
           )}
 
@@ -592,7 +678,8 @@ const UploadModal = ({ isOpen, onClose }) => {
             Hủy
           </button>
           <button 
-            onClick={() => setIsUploadOpen(true)} 
+            onClick={handleUpload}
+            disabled={isUploading}
             className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-50 transition-all"
           >
             <UploadCloud size={16} /> {isUploading ? 'Đang xử lý...' : 'Lưu vào Cloud'}
@@ -681,6 +768,7 @@ export default function App() {
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [fileToView, setFileToView] = useState(null);
   const [permissionChange, setPermissionChange] = useState(null);
+  const [files, setFiles] = useState([]);
 
   const handleLogin = (account) => {
     setCurrentUser(account);
@@ -713,6 +801,53 @@ export default function App() {
   const handleViewFile = (file) => {
     setFileToView(file);
   };
+
+  const handleUploadedFile = (newFile) => {
+    setFiles((prevFiles) => [newFile, ...prevFiles]);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) {
+      return;
+    }
+
+    const toDisplayFile = (doc) => {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let size = doc.fileSize || 0;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+      }
+
+      return {
+        id: doc.id,
+        name: doc.fileName,
+        type: doc.fileType || 'unknown',
+        size: `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`,
+        date: doc.createdAt ? doc.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        status: doc.isPublic ? 'public' : 'private',
+        tags: doc.hashtags ? doc.hashtags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        ownerId: doc.ownerId,
+        owner: doc.ownerId === currentUser.id ? currentUser.username : `user-${doc.ownerId}`,
+      };
+    };
+
+    const loadDocuments = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/documents');
+        if (!response.ok) {
+          throw new Error('Cannot load documents');
+        }
+        const docs = await response.json();
+        setFiles(Array.isArray(docs) ? docs.map(toDisplayFile) : []);
+      } catch {
+        setFiles(mockFiles);
+      }
+    };
+
+    loadDocuments();
+  }, [isAuthenticated, currentUser]);
 
   if (!isAuthenticated) {
     if (showAuthModal) {
@@ -858,11 +993,11 @@ export default function App() {
                 if (activeTab === 'shared') {
                   filesToDisplay = mockSharedFiles;
                 } else if (activeTab === 'community') {
-                  filesToDisplay = mockFiles.filter(f => f.status === 'public');
+                  filesToDisplay = files.filter(f => f.status === 'public');
                 } else if (activeTab === 'my-docs') {
-                  filesToDisplay = mockFiles.filter(f => f.owner === currentUser.username);
+                  filesToDisplay = files.filter(f => (f.ownerId && f.ownerId === currentUser.id) || f.owner === currentUser.username);
                 } else if (activeTab === 'recent') {
-                  filesToDisplay = mockFiles.slice(0, 2); // Giả lập recent
+                  filesToDisplay = files.slice(0, 2);
                 } else if (activeTab === 'trash') {
                   filesToDisplay = []; // Thùng rác trống
                 }
@@ -985,7 +1120,12 @@ export default function App() {
       </main>
 
       {/* Modals */}
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={handleUploadedFile}
+        currentUser={currentUser}
+      />
       <ShareModal isOpen={!!shareFile} onClose={() => setShareFile(null)} file={shareFile} />
       
       {/* Logout Confirmation Modal */}
