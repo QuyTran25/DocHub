@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Folder, Users, Clock, Trash2, Search, Filter, UploadCloud, 
-  MoreVertical, Download, Link as LinkIcon, Activity, FileText, 
+  MoreVertical, Download, Link as LinkIcon, FileText, 
   Image as ImageIcon, LayoutGrid, List, X, ShieldCheck, User, LogOut,
-  Eye, EyeOff, Mail, Lock, Share2, AlertCircle
+  Eye, EyeOff, Mail, Lock, Share2, AlertCircle, Bell, Settings
 } from 'lucide-react';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -18,7 +18,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 const mockAccounts = [
   { id: 1, username: 'akhoa', password: '2110', email: 'akhoa@university.edu', fullName: 'Ạ Khoa', role: 'user' },
   { id: 2, username: 'qtran', password: '2506', email: 'qtran@university.edu', fullName: 'Q Trân', role: 'user' },
-  { id: 3, username: 'admin', password: 'admin123', email: 'admin@university.edu', fullName: 'Quản trị viên', role: 'admin' },
 ];
 
 // --- MOCK DATA ---
@@ -27,21 +26,150 @@ const mockFiles =[
   { id: 2, name: 'Kiến trúc hệ thống.docx', type: 'docx', size: '1.1 MB', date: '2026-03-20', status: 'private', tags: ['#Architecture', '#Design'], owner: 'akhoa' },
   { id: 3, name: 'Mô hình AWS Topology.png', type: 'image', size: '4.5 MB', date: '2026-03-18', status: 'public', tags: ['#AWS', '#Infrastructure'], owner: 'qtran' },
   { id: 4, name: 'Best Practices React.pdf', type: 'pdf', size: '800 KB', date: '2026-03-15', status: 'public', tags: ['#React', '#Frontend'], owner: 'qtran' },
-  { id: 5, name: 'Bài tập thực hành.docx', type: 'docx', size: '1.5 MB', date: '2026-03-19', status: 'private', tags: ['#Bài tập', '#Thực hành'], owner: 'admin' },
 ];
 
 // --- MOCK SHARED FILES (Được chia sẻ với tôi) ---
 // Những file được chia sẻ riêng (không public) thông qua Signed URL hoặc email invite
 const mockSharedFiles = [
   { id: 101, name: 'Đề cương ôn thi môn Cloud.pdf', type: 'pdf', size: '3.2 MB', date: '2026-03-20', status: 'private', tags: ['#Ôn thi', '#Cloud'], owner: 'qtran', sharedBy: 'Q Trân', sharedDate: '2026-03-20' },
-  { id: 102, name: 'Slide bài 5 - Docker & Kubernetes.pptx', type: 'docx', size: '5.7 MB', date: '2026-03-18', status: 'private', tags: ['#Docker', '#Kubernetes'], owner: 'admin', sharedBy: 'Quản trị viên', sharedDate: '2026-03-19' },
+  { id: 102, name: 'Slide bài 5 - Docker & Kubernetes.pptx', type: 'docx', size: '5.7 MB', date: '2026-03-18', status: 'private', tags: ['#Docker', '#Kubernetes'], owner: 'qtran', sharedBy: 'Q Trân', sharedDate: '2026-03-19' },
   { id: 103, name: 'Báo cáo Nhóm 3 - AWS Project.docx', type: 'docx', size: '2.1 MB', date: '2026-03-19', status: 'private', tags: ['#GroupProject', '#AWS'], owner: 'akhoa', sharedBy: 'Ạ Khoa', sharedDate: '2026-03-19' },
-  { id: 104, name: 'Code mẫu - Lambda Functions.zip', type: 'pdf', size: '1.8 MB', date: '2026-03-17', status: 'private', tags: ['#Code', '#Lambda'], owner: 'admin', sharedBy: 'Quản trị viên', sharedDate: '2026-03-18' },
 ];
 
 // --- COMPONENTS ---
 
-// 1. Auth Screen - IMPROVED
+// 1. Landing Page - Trang chủ
+const LandingPage = ({ onGetStarted }) => {
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-\[#120368\] to-\[#120368\] text-white font-bold">
+              D
+            </div>
+            <span className="text-xl font-bold text-slate-900">DocHub</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <a href="#" className="text-sm font-medium text-slate-600 hover:text-slate-900">Đăng nhập</a>
+            <button onClick={onGetStarted} className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:shadow-lg" style={{ background: '#120368' }}>
+              Tạo tài khoản
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="mx-auto max-w-7xl px-6 py-16 sm:py-24">
+        <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+          <div className="space-y-6">
+            <h1 className="text-5xl font-bold leading-tight text-slate-900">
+              Chia sẻ tài liệu <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, #120368, #120368)' }}>một cách dễ dàng</span>
+            </h1>
+            <p className="text-xl text-slate-600">
+              DocHub giúp bạn lưu trữ, quản lý và chia sẻ tài liệu trên cloud. An toàn, nhanh chóng và hiệu quả.
+            </p>
+            <div className="flex gap-4">
+              <button onClick={onGetStarted} className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-white hover:shadow-lg transition" style={{ background: '#120368' }}>
+                Bắt đầu miễn phí
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-6 py-3 font-semibold text-slate-900 hover:bg-slate-50 transition">
+                Xem demo
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-center">
+            <div className="aspect-square rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-slate-400">
+              <div className="space-y-3 px-8">
+                <div className="h-3 w-3/4 rounded-full bg-slate-300"></div>
+                <div className="h-3 w-1/2 rounded-full bg-slate-200"></div>
+                <div className="space-y-2 pt-4">
+                  <div className="h-2 w-full rounded-full bg-slate-200"></div>
+                  <div className="h-2 w-5/6 rounded-full bg-slate-200"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="border-t border-slate-200 bg-slate-50 py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900">Tính năng nổi bật</h2>
+            <p className="mt-2 text-slate-600">Một thứ bạn cần để quản lý tài liệu học tập quả</p>
+          </div>
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              { icon: '☁️', title: 'Lưu trữ trên Cloud', desc: 'Lưu trữ không giới hạn với bảo mật AWS S3' },
+              { icon: '🔒', title: 'Bảo mật hàng đầu', desc: 'Mã hóa end-to-end và kiểm soát truy cập' },
+              { icon: '🔗', title: 'Chia sẻ dễ dàng', desc: 'Chia sẻ với link bảo mật hoặc công khai' },
+              { icon: '👥', title: 'Quản lý quyền hạn', desc: 'Kiểm soát chính xác ai có thể xem gì' },
+            ].map((item, i) => (
+              <div key={i} className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:shadow-md transition">
+                <div className="text-4xl mb-3">{item.icon}</div>
+                <h3 className="font-semibold text-slate-900">{item.title}</h3>
+                <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="mx-auto max-w-7xl px-6 py-16 sm:py-24">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-slate-900">Định giá đơn giản</h2>
+          <p className="mt-2 text-slate-600">Chọn gói phù hợp với nhu cầu của bạn</p>
+        </div>
+        <div className="grid gap-8 md:grid-cols-3">
+          {[
+            { name: 'Miễn phí', price: '$0', features: ['5GB dung lượng', 'Chia sẻ với 5 người', 'Hộ trợ cơ bản'] },
+            { name: 'Pro', price: '$9.99', popular: true, features: ['100GB dung lượng', 'Chia sẻ không giới hạn', 'Hộ trợ ưu tiên', 'Truy cập'] },
+            { name: 'Enterprise', price: 'Liên hệ', features: ['Dung lượng không giới hạn', 'Hộ trợ 24/7', 'Tính năng tùy chỉnh'] },
+          ].map((plan, i) => (
+            <div key={i} className={`rounded-2xl border-2 p-8 ${plan.popular ? 'border-blue-600 bg-gradient-to-b from-blue-50 to-white' : 'border-slate-200 bg-white'}`}>
+              <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
+              <div className="mt-3 text-3xl font-bold text-slate-900">{plan.price}<span className="text-lg text-slate-500">/tháng</span></div>
+              <ul className="mt-6 space-y-3">
+                {plan.features.map((f, j) => (
+                  <li key={j} className="flex items-center gap-2 text-sm text-slate-600">
+                    <span className="text-blue-600">✓</span> {f}
+                  </li>
+                ))}
+              </ul>
+              <button className={`mt-8 w-full rounded-lg py-2.5 font-semibold transition ${plan.popular ? 'text-white hover:opacity-90' : 'border border-slate-300 text-slate-900 hover:bg-slate-50'}`} style={plan.popular ? { background: '#120368' } : {}}>
+                {plan.name === 'Enterprise' ? 'Liên hệ' : 'Bắt đầu'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="border-t border-slate-200 py-16 text-white" style={{ background: '#120368' }}>
+        <div className="mx-auto max-w-2xl px-6 text-center">
+          <h2 className="text-3xl font-bold">Sẵn sàng bắt đầu?</h2>
+          <p className="mt-4">Tạo tải khoản miễn phí ngay hôm nay và bắt đầu chia sẻ tài liệu</p>
+          <button onClick={onGetStarted} className="mt-6 rounded-lg bg-white px-8 py-3 font-semibold hover:bg-slate-100 transition" style={{ color: '#120368' }}>
+            Tạo tài khoản
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-200 bg-slate-50 py-12">
+        <div className="mx-auto max-w-7xl px-6 text-center text-sm text-slate-600">
+          <p>© 2026 DocHub. Tất cả quyền được bảo lưu.</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+// 2. Auth Screen - Split Screen Login/Register
 const AuthScreen = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
@@ -78,23 +206,26 @@ const AuthScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative circles */}
-      <div className="absolute top-20 left-10 w-72 h-72 bg-white/10 rounded-full blur-2xl"></div>
-      <div className="absolute bottom-20 right-10 w-72 h-72 bg-white/10 rounded-full blur-2xl"></div>
-      
-      <div className="relative z-10 w-full max-w-md">
-        <div className="bg-white/95 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-white/20">
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      {/* Left - Form */}
+      <div className="flex bg-white flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
-              <UploadCloud size={32} strokeWidth={2.5} className="text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+              D
             </div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Cloud Doc Hub</h1>
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase">DocHub</p>
+              <h1 className="text-2xl font-bold text-slate-900">Cloud Storage</h1>
+            </div>
           </div>
           
-          <h2 className="text-xl font-bold mb-6 text-slate-800 text-center">
-            {isLogin ? 'Đâu là tài khoản của bạn?' : 'Tạo tài khoản mới'}
+          <h2 className="text-2xl font-bold mb-2 text-slate-900">
+            {isLogin ? 'Đăng nhập' : 'Tạo tài khoản'}
           </h2>
+          <p className="text-slate-600 mb-6 text-sm">
+            {isLogin ? 'Quản lý và chia sẻ tài liệu của bạn để đăng' : 'Bắt đầu quản lý tài liệu của bạn ngay hôm nay'}
+          </p>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm font-medium flex items-center gap-2">
@@ -134,11 +265,18 @@ const AuthScreen = ({ onLogin }) => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">Thử với: <span className="font-mono">akhoa/2110, qtran/2506, admin/admin123</span></p>
+                <p className="text-xs text-slate-500 mt-1">Thử: akhoa/2110 hoặc qtran/2506</p>
+              </div>
+              <div className="flex items-center justify-between mt-2 text-sm">
+                <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" />
+                  <span>Nhớ mật khẩu</span>
+                </label>
+                <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Quên mật khẩu?</a>
               </div>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-200 mt-6"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
               >
                 Đăng nhập
               </button>
@@ -180,18 +318,31 @@ const AuthScreen = ({ onLogin }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Mật khẩu</label>
-                <input 
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-slate-50" 
-                  placeholder="••••••••" 
-                  required 
-                />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-slate-50" 
+                    placeholder="••••••••" 
+                    required 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" className="w-4 h-4 rounded" />
+                <span>Tôi đồng ý với <a href="#" className="text-blue-600 hover:underline">Điều khoản sử dụng và Chính sách bảo mật</a></span>
+              </label>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-200 mt-6"
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
               >
                 Đăng ký
               </button>
@@ -210,6 +361,28 @@ const AuthScreen = ({ onLogin }) => {
               {isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Right - Illustration */}
+      <div className="hidden lg:flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-12">
+        <div className="text-center space-y-6 max-w-md">
+          <div className="w-24 h-24 mx-auto bg-blue-200 rounded-full flex items-center justify-center text-5xl">
+            {isLogin ? '💬' : '👤'}
+          </div>
+          <h3 className="text-2xl font-bold text-slate-900">
+            {isLogin ? 'Chia sẻ tài liệu dễ dàng' : 'Bắt đầu miễn phí'}
+          </h3>
+          <p className="text-slate-600">
+            {isLogin 
+              ? 'Lưu trữ, chia sẻ và quản lý tài liệu của bạn trên cloud một cách an toàn và hiệu quả.'
+              : 'Không cần thẻ tín dụng. Tạo tài khoản ngay và bắt đầu chia sẻ kiến thức cùng nhóm.'}
+          </p>
+          <ul className="space-y-2 text-left text-sm text-slate-600">
+            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Bảo mật hàng đầu' : 'Miễn phí vĩnh viễn'}</li>
+            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Chia sẻ nhanh chóng' : 'Không cần thẻ tín dụng'}</li>
+            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Quản lý quyền hạn' : 'Dễ dàng nâng cấp sau'}</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -307,15 +480,10 @@ const UploadModal = ({ isOpen, onClose }) => {
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer group ${
-              isDragActive 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-slate-300 hover:border-blue-500 hover:bg-blue-50'
-            }`}
+            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer group`}
+            style={isDragActive ? { borderColor: '#120368', background: '#E0EAFA' } : { borderColor: 'rgb(203, 213, 225)', background: 'transparent' }}
           >
-            <UploadCloud size={40} className={`mb-3 transition-colors ${
-              isDragActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-500'
-            }`} />
+            <UploadCloud size={40} className="mb-3 transition-colors" style={isDragActive ? { color: '#120368' } : { color: 'rgb(148, 163, 184)' }} />
             <p className="font-medium text-slate-700">
               {isDragActive ? '📥 Thả file vào đây' : 'Kéo thả file vào đây'}
             </p>
@@ -406,8 +574,8 @@ const UploadModal = ({ isOpen, onClose }) => {
               </div>
               <div className="w-full bg-blue-200 rounded-full h-3 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full transition-all duration-300 ease-out" 
-                  style={{ width: `${progress}%` }}
+                  className="h-3 rounded-full transition-all duration-300 ease-out" 
+                  style={{ width: `${progress}%`, background: '#120368' }}
                 ></div>
               </div>
               <p className="text-xs text-blue-700">Vui lòng chờ, file đang được đẩy lên AWS S3...</p>
@@ -424,9 +592,8 @@ const UploadModal = ({ isOpen, onClose }) => {
             Hủy
           </button>
           <button 
-            onClick={() => setIsUploading(true)} 
-            disabled={!selectedFile || isUploading}
-            className="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
+            onClick={() => setIsUploadOpen(true)} 
+            className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-50 transition-all"
           >
             <UploadCloud size={16} /> {isUploading ? 'Đang xử lý...' : 'Lưu vào Cloud'}
           </button>
@@ -489,7 +656,7 @@ const ShareModal = ({ isOpen, onClose, file }) => {
 
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-\[#120368\] rounded-lg hover:bg-teal-700 flex items-center gap-2">
             <LinkIcon size={16} /> Tạo Link Shared
           </button>
         </div>
@@ -498,199 +665,13 @@ const ShareModal = ({ isOpen, onClose, file }) => {
   );
 };
 
-// 4. Admin Dashboard (CloudWatch Clone)
-const AdminDashboard = () => {
-  const lineData = {
-    labels:['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
-    datasets:[{
-      label: 'Lượt tải xuống',
-      data:[120, 190, 300, 250, 400, 450, 600],
-      borderColor: 'rgb(37, 99, 235)',
-      backgroundColor: 'rgba(37, 99, 235, 0.1)',
-      fill: true,
-      tension: 0.4
-    }]
-  };
 
-  const barData = {
-    labels:['PDF', 'Docx', 'Images', 'Others'],
-    datasets: [{
-      label: 'Dung lượng S3 (GB)',
-      data:[45, 20, 85, 10],
-      backgroundColor:['#3b82f6', '#10b981', '#f59e0b', '#64748b'],
-      borderRadius: 4
-    }]
-  };
-
-  return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800">Admin Monitoring (CloudWatch)</h2>
-        <p className="text-slate-500">Giám sát tài nguyên hệ thống và S3 Bucket</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg"><Activity size={24} /></div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Tổng API Calls</p>
-            <p className="text-2xl font-bold text-slate-800">12,450</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg"><UploadCloud size={24} /></div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Dung lượng S3 đã dùng (Free Tier)</p>
-            <p className="text-2xl font-bold text-slate-800">4.8 GB / 5 GB</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="p-3 bg-amber-100 text-amber-600 rounded-lg"><Users size={24} /></div>
-          <div>
-            <p className="text-sm font-medium text-slate-500">Active Users</p>
-            <p className="text-2xl font-bold text-slate-800">842</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Traffic tải xuống (7 ngày qua)</h3>
-          <Line data={lineData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">Phân bổ S3 Storage theo định dạng</h3>
-          <Bar data={barData} options={{ responsive: true, plugins: { legend: { display: false } } }} />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// 5. User Management Component (Admin only)
-const UserManagement = () => {
-  const users = [
-    { id: 1, username: 'akhoa', email: 'akhoa@university.edu', fullName: 'Ạ Khoa', joined: '2026-03-15', storage: '1.2 GB', role: 'user' },
-    { id: 2, username: 'qtran', email: 'qtran@university.edu', fullName: 'Q Trân', joined: '2026-03-18', storage: '0.8 GB', role: 'user' },
-    { id: 3, username: 'admin', email: 'admin@university.edu', fullName: 'Quản trị viên', joined: '2026-03-01', storage: '2.8 GB', role: 'admin' },
-  ];
-
-  return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Quản lý Người dùng</h2>
-        <p className="text-slate-500 mt-1">Theo dõi tài khoản và dung lượng lưu trữ của người dùng</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Tổng người dùng</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">{users.length}</p>
-            </div>
-            <Users size={40} className="text-blue-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Dung lượng đã dùng</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">4.8 GB</p>
-            </div>
-            <UploadCloud size={40} className="text-green-200" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-xl border border-purple-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-600">Còn trống (Free Tier)</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">0.2 GB</p>
-            </div>
-            <Activity size={40} className="text-purple-200" />
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
-          <h3 className="text-lg font-bold text-slate-800">Danh sách người dùng hệ thống</h3>
-        </div>
-        
-        <table className="w-full">
-          <thead>
-            <tr className="bg-gradient-to-r from-slate-50 to-slate-100 text-slate-700 border-b border-slate-200">
-              <th className="px-6 py-4 text-left font-bold">Tên người dùng</th>
-              <th className="px-6 py-4 text-left font-bold">Email</th>
-              <th className="px-6 py-4 text-left font-bold">Ngày tham gia</th>
-              <th className="px-6 py-4 text-left font-bold">Dung lượng sử dụng</th>
-              <th className="px-6 py-4 text-left font-bold">Quyền</th>
-              <th className="px-6 py-4 text-right font-bold">Hành động</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {users.map((user, idx) => (
-              <tr key={user.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      user.role === 'admin' 
-                        ? 'bg-gradient-to-br from-red-500 to-red-600'
-                        : 'bg-gradient-to-br from-blue-500 to-indigo-600'
-                    }`}>
-                      {user.fullName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-slate-800">{user.fullName}</p>
-                      <p className="text-xs text-slate-500">@{user.username}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-600">{user.email}</td>
-                <td className="px-6 py-4 text-sm text-slate-600">{user.joined}</td>
-                <td className="px-6 py-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 bg-slate-200 rounded-full h-2">
-                      <div className={`h-2 rounded-full ${
-                        user.storage.includes('2.8') ? 'bg-red-500 w-11/12' : 
-                        user.storage.includes('1.2') ? 'bg-blue-500 w-1/4' : 'bg-green-500 w-1/6'
-                      }`}></div>
-                    </div>
-                    <span className="text-xs font-medium text-slate-600 w-12">{user.storage}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    user.role === 'admin'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {user.role === 'admin' ? '👨‍💼 Admin' : '👤 User'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Xem chi tiết">
-                    <Eye size={18} />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Xóa">
-                    <Trash2 size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
 
 // 6. Main Application
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState('my-docs');
   const [viewMode, setViewMode] = useState('grid');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -734,7 +715,10 @@ export default function App() {
   };
 
   if (!isAuthenticated) {
-    return <AuthScreen onLogin={handleLogin} />;
+    if (showAuthModal) {
+      return <AuthScreen onLogin={handleLogin} />;
+    }
+    return <LandingPage onGetStarted={() => setShowAuthModal(true)} />;
   }
 
   const getFileIcon = (type) => {
@@ -746,16 +730,8 @@ export default function App() {
     }
   };
 
-  // Navigation items - Admin có quyền thêm Admin Dashboard
-  const navItems = currentUser?.role === 'admin' ? [
-    { id: 'my-docs', icon: Folder, label: 'Tài liệu của tôi' },
-    { id: 'community', icon: Users, label: 'Cộng đồng' },
-    { id: 'shared', icon: Share2, label: 'Được chia sẻ với tôi' },
-    { id: 'recent', icon: Clock, label: 'Gần đây' },
-    { id: 'trash', icon: Trash2, label: 'Thùng rác' },
-    { id: 'users', icon: Users, label: '👥 Quản lý User' },
-    { id: 'admin', icon: Activity, label: '🎛️ Quản trị', color: 'text-red-600' },
-  ] : [
+  // Navigation items
+  const navItems = [
     { id: 'my-docs', icon: Folder, label: 'Tài liệu của tôi' },
     { id: 'community', icon: Users, label: 'Cộng đồng' },
     { id: 'shared', icon: Share2, label: 'Được chia sẻ với tôi' },
@@ -767,19 +743,19 @@ export default function App() {
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
       
       {/* SIDEBAR */}
-      <aside className="w-64 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 hidden md:flex flex-col text-white">
-        <div className="p-6 flex items-center gap-3 border-b border-slate-700">
-          <div className="p-2 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-lg">
-            <UploadCloud size={24} strokeWidth={2.5} />
+      <aside className="w-64 bg-white hidden md:flex flex-col text-slate-800 border-r border-slate-200">
+        <div className="p-6 flex items-center gap-3 border-b border-slate-200">
+          <div className="rounded-lg" style={{ background: '#120368' }}>
+            <UploadCloud size={24} strokeWidth={2.5} className="text-white p-2" />
           </div>
           <div>
-            <span className="text-lg font-bold tracking-tight">DocHub</span>
-            <p className="text-xs text-slate-400">Cloud Storage</p>
+            <span className="text-lg font-bold tracking-tight text-slate-900">DocHub</span>
+            <p className="text-xs text-slate-500">Cloud Storage</p>
           </div>
         </div>
 
         <div className="px-4 py-4">
-          <button onClick={() => setIsUploadOpen(true)} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/30 transition-all">
+          <button onClick={() => setIsUploadOpen(true)} className="w-full text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-2 hover:shadow-lg transition-all" style={{ background: '#120368' }}>
             <UploadCloud size={18} /> Tải lên
           </button>
         </div>
@@ -789,32 +765,24 @@ export default function App() {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                activeTab === item.id 
-                  ? 'bg-gradient-to-r from-blue-600/40 to-indigo-600/40 text-white border-l-4 border-blue-400' 
-                  : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-              }`}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all border-l-4"
+              style={activeTab === item.id ? { background: '#E0EAFA', borderLeftColor: '#120368', color: '#120368' } : { borderLeftColor: 'transparent', color: 'rgb(75, 85, 99)' }}
             >
-              <item.icon size={18} className={activeTab === item.id ? 'text-blue-300' : 'text-slate-400'} />
+              <item.icon size={18} style={activeTab === item.id ? { color: '#120368' } : { color: '#9CA3AF' }} />
               <span className="truncate">{item.label}</span>
-              {item.id === 'admin' && currentUser?.role === 'admin' && (
-                <span className="ml-auto bg-red-600 text-xs px-2 py-0.5 rounded-full font-bold">ADMIN</span>
-              )}
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-700 space-y-3">
+        <div className="p-4 border-t border-slate-200 space-y-3">
           <div className="text-sm">
-            <p className="font-semibold text-white">{currentUser?.fullName}</p>
-            <p className="text-xs text-slate-400">{currentUser?.email}</p>
-            {currentUser?.role === 'admin' && (
-              <span className="inline-block mt-1 bg-red-600/20 text-red-300 text-xs px-2 py-1 rounded font-semibold">Quản trị viên</span>
-            )}
+            <p className="font-semibold text-slate-900">{currentUser?.fullName}</p>
+            <p className="text-xs text-slate-500">{currentUser?.email}</p>
           </div>
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-700/50 hover:bg-red-600/50 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:opacity-90"
+            style={{ background: '#120368' }}
           >
             <LogOut size={16} /> Đăng xuất
           </button>
@@ -825,60 +793,57 @@ export default function App() {
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         
         {/* HEADER */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm">
-          <div className="flex-1 max-w-2xl flex items-center gap-4">
-            <div className="relative w-full max-w-md">
+        <header className="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 z-10 shadow-sm">
+          <div className="flex-1">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Welcome back,</p>
+            <p className="text-2xl font-bold text-slate-900">{currentUser?.fullName}</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="relative w-80 hidden sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
                 placeholder="Tìm kiếm tài liệu, hashtag..." 
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-\[#120368\] focus:ring-2 focus:ring-teal-200 outline-none transition-all"
               />
             </div>
-            <button className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200 flex items-center gap-2 text-sm font-medium hover:text-slate-900 transition-colors">
-              <Filter size={16} /> Lọc
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4 border-l border-slate-200 pl-6 ml-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-800">{currentUser?.fullName}</p>
-              <p className="text-xs text-slate-500 capitalize">{currentUser?.role === 'admin' ? '👨‍💼 Quản trị viên' : '👤 Người dùng'}</p>
-            </div>
-            <div className={`h-11 w-11 rounded-full flex items-center justify-center text-white font-bold border-2 ${
-              currentUser?.role === 'admin' 
-                ? 'bg-gradient-to-br from-red-500 to-red-600 border-red-300'
-                : 'bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-300'
-            }`}>
-              {currentUser?.fullName?.charAt(0).toUpperCase()}
+            <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
+              <button className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" title="Notifications">
+                <Bell size={20} />
+              </button>
+              <button className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" title="Settings">
+                <Settings size={20} />
+              </button>
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold border-2`} style={{ background: '#120368', borderColor: '#E0EAFA' }}>
+                {currentUser?.fullName?.charAt(0).toUpperCase()}
+              </div>
             </div>
           </div>
         </header>
 
         {/* CONTENT AREA */}
         <div className="flex-1 overflow-y-auto">
-          {currentUser?.role === 'admin' && (activeTab === 'admin' || activeTab === 'users') ? (
-            activeTab === 'admin' ? <AdminDashboard /> : <UserManagement />
-          ) : (
-            <div className="p-6 max-w-7xl mx-auto">
+          <div className="p-8 max-w-full mx-auto">
               {/* Toolbar */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h1 className="text-3xl font-bold text-slate-900 capitalize">
+                  <h1 className="text-4xl font-bold text-slate-900 capitalize">
                     {navItems.find(i => i.id === activeTab)?.label}
                   </h1>
-                  <p className="text-sm text-slate-500 mt-1">Quản lý và chia sẻ tài liệu học tập của bạn</p>
+                  <p className="text-sm text-slate-600 mt-2">Quản lý và chia sẻ tài liệu học tập của bạn</p>
                 </div>
-                <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                <div className="flex bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
                   <button 
                     onClick={() => setViewMode('grid')} 
-                    className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`p-2.5 rounded-md transition-all ${viewMode === 'grid' ? 'text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                style={viewMode === 'grid' ? { background: '#120368' } : {}}
                   >
                     <LayoutGrid size={20} />
                   </button>
                   <button 
                     onClick={() => setViewMode('table')} 
-                    className={`p-2 rounded-md transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`p-2.5 rounded-md transition-all ${viewMode === 'table' ? 'text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                style={viewMode === 'table' ? { background: '#120368' } : {}}
                   >
                     <List size={20} />
                   </button>
@@ -912,51 +877,51 @@ export default function App() {
                       </div>
                     ) : (
                       viewMode === 'grid' ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                           {filesToDisplay.map(file => (
-                    <div key={file.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all group overflow-hidden">
-                      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
+                    <div key={file.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-\[#120368\] transition-all group overflow-hidden">
+                      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-start">
                         {getFileIcon(file.type)}
                         <button className="text-slate-400 hover:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 rounded">
                           <MoreVertical size={18} />
                         </button>
                       </div>
-                      <div className="p-4">
-                        <h3 className="text-sm font-semibold text-slate-800 truncate mb-1 line-clamp-2" title={file.name}>{file.name}</h3>
-                        <p className="text-xs text-slate-500 mb-3">{file.size} • {file.date}</p>
+                      <div className="p-5">
+                        <h3 className="text-base font-semibold text-slate-900 truncate mb-2 line-clamp-2" title={file.name}>{file.name}</h3>
+                        <p className="text-sm text-slate-600 mb-4">{file.size} • {file.date}</p>
                         
                         {/* Tags */}
-                        <div className="flex flex-wrap gap-1 mb-3">
+                        <div className="flex flex-wrap gap-2 mb-4">
                           {file.tags?.slice(0, 2).map(tag => (
-                            <span key={tag} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                            <span className={`text-xs bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full font-medium`} style={{ background: '#E0EAFA', color: '#120368' }}>
                               {tag}
                             </span>
                           ))}
                         </div>
 
                         {/* Status badge */}
-                        <div className="flex items-center justify-between mb-3">
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                            file.status === 'public' 
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-slate-100 text-slate-700'
-                          }`}>
+                        <div className="flex items-center justify-between mb-4">
+                          <span className={`text-xs font-semibold px-2.5 py-1.5 rounded-full`} style={{
+                            background: file.status === 'public' ? '#E0EAFA' : 'rgb(243, 244, 246)',
+                            color: file.status === 'public' ? '#120368' : 'rgb(55, 65, 81)'
+                          }}>
                             {file.status === 'public' ? '🌐 Công khai' : '🔒 Riêng tư'}
                           </span>
+                          <span className="text-xs text-slate-500">24 downloads</span>
                         </div>
                         
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2 border-t border-slate-100 pt-3 flex-wrap">
-                          <button onClick={() => handleViewFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 py-2 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-blue-300">
+                        <div className="flex items-center gap-2 border-t border-slate-100 pt-4 flex-wrap">
+                          <button onClick={() => handleViewFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                             <Eye size={12} /> Xem
                           </button>
-                          <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-green-50 text-slate-600 hover:text-green-600 py-2 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-green-300">
+                          <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                             <LinkIcon size={12} /> Chia sẻ
                           </button>
-                          <button onClick={() => setPermissionChange(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-purple-50 text-slate-600 hover:text-purple-600 py-2 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-purple-300">
+                          <button onClick={() => setPermissionChange(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                             <ShieldCheck size={12} /> Quyền
                           </button>
-                          <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
+                          <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
                             <Trash2 size={12} /> Xóa
                           </button>
                         </div>
@@ -1016,7 +981,6 @@ export default function App() {
                 );
               })()}
             </div>
-          )}
         </div>
       </main>
 
@@ -1044,7 +1008,8 @@ export default function App() {
               </button>
               <button 
                 onClick={confirmLogout}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ background: '#120368' }}
               >
                 Đăng xuất
               </button>
@@ -1058,8 +1023,8 @@ export default function App() {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <Trash2 className="text-red-600" size={24} />
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ background: '#E0EAFA' }}>
+                <Trash2 size={24} style={{ color: '#120368' }} />
               </div>
               <h3 className="text-xl font-bold text-slate-800">Xóa tài liệu?</h3>
               <p className="text-slate-600">Tài liệu "<strong>{deleteConfirm.name}</strong>" sẽ được chuyển vào thùng rác</p>
@@ -1073,7 +1038,8 @@ export default function App() {
               </button>
               <button 
                 onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ background: '#120368' }}
               >
                 Chuyển vào thùng rác
               </button>
@@ -1175,7 +1141,7 @@ export default function App() {
               </button>
               <button 
                 onClick={() => setPermissionChange(null)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-\[#120368\] rounded-lg hover:bg-teal-700"
               >
                 Cập nhật
               </button>
