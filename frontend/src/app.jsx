@@ -39,21 +39,30 @@ const mockSharedFiles = [
 // --- COMPONENTS ---
 
 // 1. Landing Page - Trang chủ
-const LandingPage = ({ onGetStarted }) => {
+const LandingPage = ({ onGetStarted, onLoginClick }) => {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+      <header
+        className="sticky top-0 z-50 border-b border-indigo-900/60 backdrop-blur-sm"
+        style={{ backgroundColor: '#120368' }}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-\[#120368\] to-\[#120368\] text-white font-bold">
-              D
-            </div>
-            <span className="text-xl font-bold text-slate-900">DocHub</span>
+          <div className="flex items-center">
+            <span className="text-xl font-bold text-white">DocHub</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="#" className="text-sm font-medium text-slate-600 hover:text-slate-900">Đăng nhập</a>
-            <button onClick={onGetStarted} className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:shadow-lg" style={{ background: '#120368' }}>
+            <button
+              type="button"
+              onClick={onLoginClick}
+              className="rounded-lg border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#23A0E3] hover:text-white"
+            >
+              Đăng nhập
+            </button>
+            <button
+              onClick={onGetStarted}
+              className="rounded-lg border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#23A0E3] hover:text-white"
+            >
               Tạo tài khoản
             </button>
           </div>
@@ -80,15 +89,12 @@ const LandingPage = ({ onGetStarted }) => {
             </div>
           </div>
           <div className="flex items-center justify-center">
-            <div className="aspect-square rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-slate-400">
-              <div className="space-y-3 px-8">
-                <div className="h-3 w-3/4 rounded-full bg-slate-300"></div>
-                <div className="h-3 w-1/2 rounded-full bg-slate-200"></div>
-                <div className="space-y-2 pt-4">
-                  <div className="h-2 w-full rounded-full bg-slate-200"></div>
-                  <div className="h-2 w-5/6 rounded-full bg-slate-200"></div>
-                </div>
-              </div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 shadow-xl shadow-blue-100/60">
+              <img
+                src="/images/cloud-doc-hub-intro.png"
+                alt="Minh họa hệ thống cloud chia sẻ tài liệu"
+                className="h-auto w-full max-w-sm rounded-2xl"
+              />
             </div>
           </div>
         </div>
@@ -170,14 +176,18 @@ const LandingPage = ({ onGetStarted }) => {
 };
 
 // 2. Auth Screen - Split Screen Login/Register
-const AuthScreen = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
+  const [isLogin, setIsLogin] = useState(initialMode !== 'register');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setIsLogin(initialMode !== 'register');
+  }, [initialMode]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -210,8 +220,16 @@ const AuthScreen = ({ onLogin }) => {
       {/* Left - Form */}
       <div className="flex bg-white flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
+          <button
+            type="button"
+            onClick={onBackHome}
+            className="mb-6 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-2xl font-black text-[#120368] transition hover:bg-slate-50"
+          >
+            ←
+          </button>
+
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#23A0E3] text-white font-bold text-lg">
               D
             </div>
             <div>
@@ -276,7 +294,7 @@ const AuthScreen = ({ onLogin }) => {
               </div>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
               >
                 Đăng nhập
               </button>
@@ -342,7 +360,7 @@ const AuthScreen = ({ onLogin }) => {
               </label>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
               >
                 Đăng ký
               </button>
@@ -367,9 +385,11 @@ const AuthScreen = ({ onLogin }) => {
       {/* Right - Illustration */}
       <div className="hidden lg:flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-12">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-24 h-24 mx-auto bg-blue-200 rounded-full flex items-center justify-center text-5xl">
-            {isLogin ? '💬' : '👤'}
-          </div>
+          <img
+            src="/images/auth-cloud-illustration.png"
+            alt="Minh họa hạ tầng cloud"
+            className="mx-auto h-auto w-full max-w-sm"
+          />
           <h3 className="text-2xl font-bold text-slate-900">
             {isLogin ? 'Chia sẻ tài liệu dễ dàng' : 'Bắt đầu miễn phí'}
           </h3>
@@ -378,11 +398,6 @@ const AuthScreen = ({ onLogin }) => {
               ? 'Lưu trữ, chia sẻ và quản lý tài liệu của bạn trên cloud một cách an toàn và hiệu quả.'
               : 'Không cần thẻ tín dụng. Tạo tài khoản ngay và bắt đầu chia sẻ kiến thức cùng nhóm.'}
           </p>
-          <ul className="space-y-2 text-left text-sm text-slate-600">
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Bảo mật hàng đầu' : 'Miễn phí vĩnh viễn'}</li>
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Chia sẻ nhanh chóng' : 'Không cần thẻ tín dụng'}</li>
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Quản lý quyền hạn' : 'Dễ dàng nâng cấp sau'}</li>
-          </ul>
         </div>
       </div>
     </div>
@@ -758,7 +773,7 @@ const ShareModal = ({ isOpen, onClose, file }) => {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState(null);
   const [activeTab, setActiveTab] = useState('my-docs');
   const [viewMode, setViewMode] = useState('grid');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -850,10 +865,10 @@ export default function App() {
   }, [isAuthenticated, currentUser]);
 
   if (!isAuthenticated) {
-    if (showAuthModal) {
-      return <AuthScreen onLogin={handleLogin} />;
+    if (authMode) {
+      return <AuthScreen onLogin={handleLogin} onBackHome={() => setAuthMode(null)} initialMode={authMode} />;
     }
-    return <LandingPage onGetStarted={() => setShowAuthModal(true)} />;
+    return <LandingPage onGetStarted={() => setAuthMode('register')} onLoginClick={() => setAuthMode('login')} />;
   }
 
   const getFileIcon = (type) => {
