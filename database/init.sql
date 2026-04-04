@@ -26,10 +26,16 @@ CREATE TABLE `documents` (
   `id` int NOT NULL AUTO_INCREMENT,
   `file_name` varchar(255) NOT NULL,
   `s3_key` varchar(255) NOT NULL,
+  `file_path` varchar(255) NOT NULL,
   `file_type` varchar(50) DEFAULT NULL,
   `file_size` bigint DEFAULT NULL,
   `owner_id` int DEFAULT NULL,
   `is_public` tinyint(1) DEFAULT '0',
+  `topic` varchar(255) DEFAULT NULL,
+  `hashtags` varchar(255) DEFAULT NULL,
+  `status` int NOT NULL DEFAULT '0',
+  `deleted_at` datetime DEFAULT NULL,
+  `original_path` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `fk_owner` (`owner_id`),
@@ -43,8 +49,38 @@ CREATE TABLE `documents` (
 
 LOCK TABLES `documents` WRITE;
 /*!40000 ALTER TABLE `documents` DISABLE KEYS */;
-INSERT INTO `documents` VALUES (1,'slide.pdf','uploads/slide.pdf','pdf',2048000,1,1,'2026-03-24 13:02:35');
+INSERT INTO `documents` VALUES (1,'slide.pdf','uploads/slide.pdf','uploads/slide.pdf','pdf',2048000,1,1,'Cloud Computing','#Cloud',0,NULL,'uploads/slide.pdf','2026-03-24 13:02:35');
 /*!40000 ALTER TABLE `documents` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `document_shares`
+--
+
+DROP TABLE IF EXISTS `document_shares`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `document_shares` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `document_id` int NOT NULL,
+  `owner_id` int NOT NULL,
+  `shared_with_user_id` int NOT NULL,
+  `hidden_for_recipient` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_document_shared_user` (`document_id`,`shared_with_user_id`),
+  KEY `idx_document_shares_document_id` (`document_id`),
+  KEY `idx_document_shares_shared_user` (`shared_with_user_id`),
+  CONSTRAINT `fk_document_shares_document` FOREIGN KEY (`document_id`) REFERENCES `documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_shares_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_document_shares_shared_user` FOREIGN KEY (`shared_with_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `document_shares` WRITE;
+/*!40000 ALTER TABLE `document_shares` DISABLE KEYS */;
+INSERT INTO `document_shares` VALUES (1,1,1,2,0,'2026-03-24 13:10:00');
+/*!40000 ALTER TABLE `document_shares` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --

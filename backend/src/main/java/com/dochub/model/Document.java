@@ -15,6 +15,9 @@ import jakarta.persistence.Table;
 @Table(name = "documents")
 public class Document {
 
+    public static final int STATUS_ACTIVE = 0;
+    public static final int STATUS_TRASH = 1;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -45,6 +48,15 @@ public class Document {
 
     @Column(name = "hashtags")
     private String hashtags;
+
+    @Column(name = "status", nullable = false)
+    private Integer status = STATUS_ACTIVE;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    @Column(name = "original_path")
+    private String originalPath;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -128,6 +140,30 @@ public class Document {
 
     public void setHashtags(String hashtags) {
         this.hashtags = hashtags;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public String getOriginalPath() {
+        return originalPath;
+    }
+
+    public void setOriginalPath(String originalPath) {
+        this.originalPath = originalPath;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -14,6 +14,8 @@ public class UploadDocumentResponse {
     private String topic;
     private String hashtags;
     private String s3Key;
+    private Integer status;
+    private LocalDateTime deletedAt;
     private LocalDateTime createdAt;
 
     public static UploadDocumentResponse fromDocument(Document document) {
@@ -27,6 +29,8 @@ public class UploadDocumentResponse {
         response.setTopic(document.getTopic());
         response.setHashtags(document.getHashtags());
         response.setS3Key(document.getS3Key());
+        response.setStatus(document.getStatus());
+        response.setDeletedAt(document.getDeletedAt());
         response.setCreatedAt(document.getCreatedAt());
         return response;
     }
@@ -101,6 +105,22 @@ public class UploadDocumentResponse {
 
     public void setS3Key(String s3Key) {
         this.s3Key = s3Key;
+    }
+
+    public Integer getStatus() {
+        return status;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public LocalDateTime getCreatedAt() {

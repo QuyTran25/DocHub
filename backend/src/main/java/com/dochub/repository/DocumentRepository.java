@@ -1,8 +1,17 @@
 package com.dochub.repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.dochub.model.Document;
 
 public interface DocumentRepository extends JpaRepository<Document, Long> {
+
+	List<Document> findByStatus(Integer status);
+
+	List<Document> findByOwnerIdAndStatus(Integer ownerId, Integer status);
+
+	List<Document> findByStatusAndDeletedAtBefore(Integer status, LocalDateTime cutoffTime);
 }

@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -60,6 +62,96 @@ public class DocumentController {
                 .map(UploadDocumentResponse::fromDocument)
                 .toList();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/trash")
+    public ResponseEntity<?> listTrashDocuments(@RequestParam(value = "ownerId", required = false) Integer ownerId) {
+        try {
+            List<UploadDocumentResponse> response = documentService.getTrashDocumentsByOwner(ownerId)
+                    .stream()
+                    .map(UploadDocumentResponse::fromDocument)
+                    .toList();
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shared")
+    public ResponseEntity<?> listSharedDocuments(@RequestParam(value = "userId", required = false) Integer userId) {
+        try {
+            List<UploadDocumentResponse> response = documentService.getSharedDocuments(userId)
+                    .stream()
+                    .map(UploadDocumentResponse::fromDocument)
+                    .toList();
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PatchMapping("/{documentId}/trash")
+    public ResponseEntity<?> moveToTrash(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+        try {
+            Document document = documentService.softDeleteDocument(documentId, ownerId);
+            return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PatchMapping("/{documentId}/restore")
+    public ResponseEntity<?> restoreDocument(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+        try {
+            Document document = documentService.restoreDocument(documentId, ownerId);
+            return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{documentId}/permanent")
+    public ResponseEntity<?> permanentlyDeleteDocument(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+        try {
+            documentService.permanentlyDeleteDocument(documentId, ownerId);
+            return ResponseEntity.ok("Document deleted permanently");
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Cannot delete document permanently: " + ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{documentId}/shared-view")
+    public ResponseEntity<?> removeFromSharedView(
+            @PathVariable Long documentId,
+            @RequestParam(value = "userId", required = false) Integer userId) {
+        try {
+            documentService.removeDocumentFromSharedView(documentId, userId);
+            return ResponseEntity.ok("Removed from shared view");
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PostMapping("/{documentId}/share")
+    public ResponseEntity<?> shareWithUser(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId,
+            @RequestParam(value = "sharedWithUserId", required = false) Integer sharedWithUserId) {
+        try {
+            Document document = documentService.shareDocumentWithUser(documentId, ownerId, sharedWithUserId);
+            return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 
     @GetMapping("/{documentId}/preview-url")

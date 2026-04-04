@@ -897,6 +897,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState('grid');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [shareFile, setShareFile] = useState(null);
+  const [sharedFiles, setSharedFiles] = useState([]);
   const [trashFiles, setTrashFiles] = useState([]);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [logoutConfirm, setLogoutConfirm] = useState(false);
@@ -929,13 +930,157 @@ export default function App() {
   };
 
   const handleDeleteFile = (file) => {
-    setDeleteConfirm(file);
+    const action = activeTab === 'shared' ? 'shared-remove' : activeTab === 'trash' ? 'permanent' : 'soft-delete';
+    setDeleteConfirm({ file, action });
   };
 
-  const confirmDelete = () => {
-    if (deleteConfirm) {
-      setTrashFiles([...trashFiles, { ...deleteConfirm, deletedAt: new Date() }]);
+  const restoreFile = async (file) => {
+    if (!file?.id || !currentUser?.id) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/restore?ownerId=${currentUser.id}`, {
+        method: 'PATCH',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Không thể khôi phục tài liệu');
+      }
+
+      await Promise.all([reloadDocuments(), reloadTrashDocuments()]);
+    } catch (error) {
+      alert(`Khôi phục thất bại: ${error.message}`);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm?.file?.id || !currentUser?.id) {
       setDeleteConfirm(null);
+      return;
+    }
+
+    const { file, action } = deleteConfirm;
+
+    try {
+      if (action === 'shared-remove') {
+        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/shared-view?userId=${currentUser.id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Không thể gỡ tài liệu khỏi danh sách được chia sẻ');
+        }
+
+        await reloadSharedDocuments();
+      } else if (action === 'permanent') {
+        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/permanent?ownerId=${currentUser.id}`, {
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Không thể xóa vĩnh viễn tài liệu');
+        }
+
+        await Promise.all([reloadDocuments(), reloadTrashDocuments()]);
+      } else {
+        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/trash?ownerId=${currentUser.id}`, {
+          method: 'PATCH',
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Không thể chuyển tài liệu vào thùng rác');
+        }
+
+        await Promise.all([reloadDocuments(), reloadTrashDocuments()]);
+      }
+    } catch (error) {
+      if (action === 'shared-remove') {
+        setSharedFiles((prev) => prev.filter((item) => item.id !== file.id));
+      } else {
+        alert(`Thao tác thất bại: ${error.message}`);
+      }
+    } finally {
+      setDeleteConfirm(null);
+    }
+  };
+
+  const mapDocToDisplayFile = (doc) => {
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = doc.fileSize || 0;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+
+    return {
+      id: doc.id,
+      name: doc.fileName,
+      type: doc.fileType || 'unknown',
+      size: `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`,
+      date: doc.createdAt ? doc.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+      status: doc.isPublic ? 'public' : 'private',
+      tags: doc.hashtags ? doc.hashtags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      ownerId: doc.ownerId,
+      owner: doc.ownerId === currentUser.id ? currentUser.username : `user-${doc.ownerId}`,
+      deletedAt: doc.deletedAt,
+      lifecycleStatus: doc.status,
+    };
+  };
+
+  const reloadDocuments = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/documents');
+      if (!response.ok) {
+        throw new Error('Cannot load documents');
+      }
+      const docs = await response.json();
+      setFiles(Array.isArray(docs) ? docs.map(mapDocToDisplayFile) : []);
+    } catch {
+      setFiles(mockFiles);
+    }
+  };
+
+  const reloadTrashDocuments = async () => {
+    if (!currentUser?.id) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/documents/trash?ownerId=${currentUser.id}`);
+      if (!response.ok) {
+        throw new Error('Cannot load trash documents');
+      }
+      const docs = await response.json();
+      setTrashFiles(Array.isArray(docs) ? docs.map(mapDocToDisplayFile) : []);
+    } catch {
+      setTrashFiles([]);
+    }
+  };
+
+  const reloadSharedDocuments = async () => {
+    if (!currentUser?.id) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/documents/shared?userId=${currentUser.id}`);
+      if (!response.ok) {
+        throw new Error('Cannot load shared documents');
+      }
+      const docs = await response.json();
+      const mapped = Array.isArray(docs) ? docs.map(doc => ({
+        ...mapDocToDisplayFile(doc),
+        sharedBy: `user-${doc.ownerId}`,
+      })) : [];
+      setSharedFiles(mapped);
+    } catch {
+      setSharedFiles(mockSharedFiles);
     }
   };
 
@@ -1011,42 +1156,9 @@ export default function App() {
       return;
     }
 
-    const toDisplayFile = (doc) => {
-      const units = ['B', 'KB', 'MB', 'GB'];
-      let size = doc.fileSize || 0;
-      let unitIndex = 0;
-      while (size >= 1024 && unitIndex < units.length - 1) {
-        size /= 1024;
-        unitIndex += 1;
-      }
-
-      return {
-        id: doc.id,
-        name: doc.fileName,
-        type: doc.fileType || 'unknown',
-        size: `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`,
-        date: doc.createdAt ? doc.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
-        status: doc.isPublic ? 'public' : 'private',
-        tags: doc.hashtags ? doc.hashtags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
-        ownerId: doc.ownerId,
-        owner: doc.ownerId === currentUser.id ? currentUser.username : `user-${doc.ownerId}`,
-      };
-    };
-
-    const loadDocuments = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/api/documents');
-        if (!response.ok) {
-          throw new Error('Cannot load documents');
-        }
-        const docs = await response.json();
-        setFiles(Array.isArray(docs) ? docs.map(toDisplayFile) : []);
-      } catch {
-        setFiles(mockFiles);
-      }
-    };
-
-    loadDocuments();
+    reloadDocuments();
+    reloadTrashDocuments();
+    reloadSharedDocuments();
   }, [isAuthenticated, currentUser]);
 
   if (!isAuthenticated) {
@@ -1319,7 +1431,7 @@ export default function App() {
                     {activeTab === 'community' && 'Khám phá tài liệu được chia sẻ công khai từ cộng đồng'}
                     {activeTab === 'shared' && 'Tài liệu bạn bè đã chia sẻ riêng cho bạn'}
                     {activeTab === 'recent' && 'Những tài liệu bạn vừa xem gần đây'}
-                    {activeTab === 'trash' && 'Tài liệu bạn đã xóa sẽ tạm còn ở đây trong 30 ngày'}
+                    {activeTab === 'trash' && 'Tài liệu bạn đã xóa sẽ tự động bị xóa sau 10 ngày'}
                   </p>
                 </div>
                 <div className="flex bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
@@ -1346,7 +1458,7 @@ export default function App() {
                 let filesToDisplay = [];
                 
                 if (activeTab === 'shared') {
-                  filesToDisplay = mockSharedFiles;
+                  filesToDisplay = sharedFiles;
                 } else if (activeTab === 'community') {
                   filesToDisplay = files.filter(f => f.status === 'public');
                 } else if (activeTab === 'my-docs') {
@@ -1354,7 +1466,7 @@ export default function App() {
                 } else if (activeTab === 'recent') {
                   filesToDisplay = files.slice(0, 2);
                 } else if (activeTab === 'trash') {
-                  filesToDisplay = []; // Thùng rác trống
+                  filesToDisplay = trashFiles;
                 }
 
                 return (
@@ -1409,6 +1521,10 @@ export default function App() {
                             <button onClick={() => handleRequestSharePermission(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                               <Share2 size={12} /> Yêu cầu
                             </button>
+                          ) : activeTab === 'trash' ? (
+                            <button onClick={() => restoreFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                              <Folder size={12} /> Khôi phục
+                            </button>
                           ) : (
                             <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                               <LinkIcon size={12} /> Chia sẻ
@@ -1427,6 +1543,11 @@ export default function App() {
                           {activeTab === 'shared' && (
                             <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
                               <Trash2 size={12} /> Gỡ bỏ
+                            </button>
+                          )}
+                          {activeTab === 'trash' && (
+                            <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
+                              <Trash2 size={12} /> Xóa vĩnh viễn
                             </button>
                           )}
                         </div>
@@ -1472,6 +1593,8 @@ export default function App() {
                                   <button onClick={() => handleViewFile(file)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Xem"><Eye size={18} /></button>
                                   {activeTab === 'shared' ? (
                                     <button onClick={() => handleRequestSharePermission(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Yêu cầu quyền chia sẻ"><Share2 size={18} /></button>
+                                  ) : activeTab === 'trash' ? (
+                                    <button onClick={() => restoreFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Khôi phục"><Folder size={18} /></button>
                                   ) : (
                                     <button onClick={() => setShareFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Chia sẻ"><LinkIcon size={18} /></button>
                                   )}
@@ -1483,6 +1606,9 @@ export default function App() {
                                   )}
                                   {activeTab === 'shared' && (
                                     <button onClick={() => handleDeleteFile(file)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Gỡ bỏ"><Trash2 size={18} /></button>
+                                  )}
+                                  {activeTab === 'trash' && (
+                                    <button onClick={() => handleDeleteFile(file)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Xóa vĩnh viễn"><Trash2 size={18} /></button>
                                   )}
                                 </div>
                               </td>
@@ -1547,8 +1673,20 @@ export default function App() {
               <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto" style={{ background: '#E0EAFA' }}>
                 <Trash2 size={24} style={{ color: '#120368' }} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800">Xóa tài liệu?</h3>
-              <p className="text-slate-600">Tài liệu "<strong>{deleteConfirm.name}</strong>" sẽ được chuyển vào thùng rác</p>
+              <h3 className="text-xl font-bold text-slate-800">
+                {deleteConfirm.action === 'permanent'
+                  ? 'Xóa vĩnh viễn tài liệu?'
+                  : deleteConfirm.action === 'shared-remove'
+                    ? 'Gỡ tài liệu khỏi danh sách chia sẻ?'
+                    : 'Xóa tài liệu?'}
+              </h3>
+              <p className="text-slate-600">
+                {deleteConfirm.action === 'permanent'
+                  ? <>Tài liệu "<strong>{deleteConfirm.file.name}</strong>" sẽ bị xóa vĩnh viễn khỏi hệ thống và bộ nhớ cloud.</>
+                  : deleteConfirm.action === 'shared-remove'
+                    ? <>Tài liệu "<strong>{deleteConfirm.file.name}</strong>" chỉ bị gỡ khỏi mục "Được chia sẻ với tôi" của bạn.</>
+                    : <>Tài liệu "<strong>{deleteConfirm.file.name}</strong>" sẽ được chuyển vào thùng rác.</>}
+              </p>
             </div>
             <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 justify-end">
               <button 
@@ -1562,7 +1700,11 @@ export default function App() {
                 className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
                 style={{ background: '#120368' }}
               >
-                Chuyển vào thùng rác
+                {deleteConfirm.action === 'permanent'
+                  ? 'Xóa vĩnh viễn'
+                  : deleteConfirm.action === 'shared-remove'
+                    ? 'Gỡ khỏi danh sách'
+                    : 'Chuyển vào thùng rác'}
               </button>
             </div>
           </div>

@@ -5,28 +5,40 @@ import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.dochub.model.Document;
+import com.dochub.model.DocumentShare;
 import com.dochub.repository.DocumentRepository;
+import com.dochub.repository.DocumentShareRepository;
 
 @Service
 public class DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final DocumentShareRepository documentShareRepository;
     private final S3Service s3Service;
 
     @Value("${backend.public-base-url:http://localhost:8080}")
     private String backendPublicBaseUrl;
 
-    public DocumentService(DocumentRepository documentRepository, S3Service s3Service) {
+    public DocumentService(
+            DocumentRepository documentRepository,
+            DocumentShareRepository documentShareRepository,
+            S3Service s3Service) {
         this.documentRepository = documentRepository;
+        this.documentShareRepository = documentShareRepository;
         this.s3Service = s3Service;
     }
 
@@ -56,20 +68,162 @@ public class DocumentService {
         document.setIsPublic(isPublic);
         document.setTopic(topic);
         document.setHashtags(hashtags);
+        document.setStatus(Document.STATUS_ACTIVE);
+        document.setDeletedAt(null);
+        document.setOriginalPath(key);
 
         return documentRepository.save(document);
     }
 
     public List<Document> getAllDocuments() {
-        return documentRepository.findAll()
+        return documentRepository.findByStatus(Document.STATUS_ACTIVE)
                 .stream()
                 .filter(this::isDocumentContentAvailable)
                 .toList();
     }
 
+    public List<Document> getTrashDocumentsByOwner(Integer ownerId) {
+        if (ownerId == null) {
+            throw new IllegalArgumentException("ownerId is required");
+        }
+        return documentRepository.findByOwnerIdAndStatus(ownerId, Document.STATUS_TRASH)
+                .stream()
+                .filter(this::isDocumentContentAvailable)
+                .sorted(Comparator.comparing(Document::getDeletedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    public List<Document> getSharedDocuments(Integer userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+
+        List<DocumentShare> shares = documentShareRepository.findBySharedWithUserIdAndHiddenForRecipientFalse(userId);
+        if (shares.isEmpty()) {
+            return List.of();
+        }
+
+        Set<Long> documentIds = shares.stream().map(DocumentShare::getDocumentId).collect(Collectors.toSet());
+        return documentRepository.findAllById(documentIds)
+                .stream()
+                .filter(doc -> Document.STATUS_ACTIVE == safeStatus(doc))
+                .filter(this::isDocumentContentAvailable)
+                .sorted(Comparator.comparing(Document::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
     public Document getDocumentById(Long documentId) {
+        Document document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        if (Document.STATUS_TRASH == safeStatus(document)) {
+            throw new IllegalArgumentException("Document is in trash");
+        }
+        return document;
+    }
+
+    public Document getDocumentByIdIncludingTrash(Long documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+    }
+
+    @Transactional
+    public Document softDeleteDocument(Long documentId, Integer ownerId) {
+        Document document = getOwnedDocument(documentId, ownerId);
+        if (Document.STATUS_TRASH == safeStatus(document)) {
+            return document;
+        }
+
+        document.setStatus(Document.STATUS_TRASH);
+        document.setDeletedAt(LocalDateTime.now());
+        document.setIsPublic(false);
+        return documentRepository.save(document);
+    }
+
+    @Transactional
+    public Document restoreDocument(Long documentId, Integer ownerId) {
+        Document document = getOwnedDocument(documentId, ownerId);
+        if (Document.STATUS_ACTIVE == safeStatus(document)) {
+            return document;
+        }
+
+        document.setStatus(Document.STATUS_ACTIVE);
+        document.setDeletedAt(null);
+        return documentRepository.save(document);
+    }
+
+    @Transactional
+    public void permanentlyDeleteDocument(Long documentId, Integer ownerId) {
+        Document document = getOwnedDocument(documentId, ownerId);
+        if (Document.STATUS_TRASH != safeStatus(document)) {
+            throw new IllegalArgumentException("Document must be in trash before permanent deletion");
+        }
+        deleteCloudAndMetadata(document);
+    }
+
+    @Transactional
+    public void removeDocumentFromSharedView(Long documentId, Integer userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+
+        DocumentShare share = documentShareRepository.findByDocumentIdAndSharedWithUserId(documentId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Shared document not found for this user"));
+        share.setHiddenForRecipient(true);
+        documentShareRepository.save(share);
+    }
+
+    @Transactional
+    public Document shareDocumentWithUser(Long documentId, Integer ownerId, Integer sharedWithUserId) {
+        if (sharedWithUserId == null) {
+            throw new IllegalArgumentException("sharedWithUserId is required");
+        }
+        if (ownerId != null && ownerId.equals(sharedWithUserId)) {
+            throw new IllegalArgumentException("Owner cannot share document with self");
+        }
+
+        Document document = getOwnedDocument(documentId, ownerId);
+        if (Document.STATUS_TRASH == safeStatus(document)) {
+            throw new IllegalArgumentException("Cannot share document in trash");
+        }
+
+        DocumentShare share = documentShareRepository
+                .findByDocumentIdAndSharedWithUserId(documentId, sharedWithUserId)
+                .orElseGet(DocumentShare::new);
+
+        share.setDocumentId(documentId);
+        share.setOwnerId(ownerId);
+        share.setSharedWithUserId(sharedWithUserId);
+        share.setHiddenForRecipient(false);
+        documentShareRepository.save(share);
+
+        return document;
+    }
+
+    @Transactional
+    public int purgeTrashDocumentsOlderThanDays(int retentionDays) {
+        if (retentionDays <= 0) {
+            throw new IllegalArgumentException("retentionDays must be positive");
+        }
+
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
+        List<Document> expiredDocuments = documentRepository
+                .findByStatusAndDeletedAtBefore(Document.STATUS_TRASH, cutoff);
+
+        if (expiredDocuments.isEmpty()) {
+            return 0;
+        }
+
+        int deletedCount = 0;
+        for (Document document : expiredDocuments) {
+            try {
+                deleteCloudAndMetadata(document);
+                deletedCount += 1;
+            } catch (RuntimeException ex) {
+                // Best-effort cleanup: failed documents will be retried on the next run.
+            }
+        }
+
+        return deletedCount;
     }
 
     public String getPreviewUrl(Long documentId) {
@@ -160,5 +314,27 @@ public class DocumentService {
             return contentType.substring(contentType.indexOf('/') + 1).toLowerCase();
         }
         return "unknown";
+    }
+
+    private Document getOwnedDocument(Long documentId, Integer ownerId) {
+        if (ownerId == null) {
+            throw new IllegalArgumentException("ownerId is required");
+        }
+
+        Document document = getDocumentByIdIncludingTrash(documentId);
+        if (document.getOwnerId() == null || !ownerId.equals(document.getOwnerId())) {
+            throw new IllegalArgumentException("Only owner can modify this document");
+        }
+        return document;
+    }
+
+    private void deleteCloudAndMetadata(Document document) {
+        s3Service.deleteFile(document.getS3Key(), document.getFilePath());
+        documentShareRepository.deleteByDocumentId(document.getId());
+        documentRepository.delete(document);
+    }
+
+    private int safeStatus(Document document) {
+        return document.getStatus() == null ? Document.STATUS_ACTIVE : document.getStatus();
     }
 }

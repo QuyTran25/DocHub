@@ -16,6 +16,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
@@ -80,6 +81,30 @@ public class S3Service {
 
 		try (S3Presigner presigner = S3Presigner.builder().region(Region.of(region)).build()) {
 			return presigner.presignGetObject(presignRequest).url().toString();
+		}
+	}
+
+	public void deleteFile(String s3Key, String storedPath) {
+		if (isS3StorageActive()) {
+			if (s3Key == null || s3Key.isBlank()) {
+				throw new IllegalArgumentException("S3 key is empty");
+			}
+
+			try (S3Client s3Client = S3Client.builder().region(Region.of(region)).build()) {
+				DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+						.bucket(bucketName)
+						.key(s3Key)
+						.build();
+				s3Client.deleteObject(deleteObjectRequest);
+			}
+			return;
+		}
+
+		Path localPath = resolveLocalPath(storedPath);
+		try {
+			Files.deleteIfExists(localPath);
+		} catch (IOException ex) {
+			throw new IllegalStateException("Cannot delete local file: " + localPath, ex);
 		}
 	}
 
