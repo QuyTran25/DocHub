@@ -813,8 +813,28 @@ export default function App() {
     }
   };
 
-  const handleViewFile = (file) => {
-    setFileToView(file);
+  const handleViewFile = async (file) => {
+    if (!file?.id) {
+      alert('Không thể mở file này vì thiếu mã định danh (id).');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/preview-url`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Không lấy được link xem file.');
+      }
+
+      const body = await response.json();
+      if (!body?.url) {
+        throw new Error('Backend không trả về URL xem file hợp lệ.');
+      }
+
+      window.open(body.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      alert(`Mở file thất bại: ${error.message}. Vui lòng khởi động lại backend để cập nhật API mới rồi thử lại.`);
+    }
   };
 
   const handleUploadedFile = (newFile) => {
