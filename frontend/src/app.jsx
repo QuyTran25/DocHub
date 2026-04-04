@@ -22,10 +22,10 @@ const mockAccounts = [
 
 // --- MOCK DATA ---
 const mockFiles =[
-  { id: 1, name: 'Giáo trình Cloud Computing.pdf', type: 'pdf', size: '2.4 MB', date: '2026-03-21', status: 'private', tags: ['#CloudComputing', '#AWS'], owner: 'akhoa' },
-  { id: 2, name: 'Kiến trúc hệ thống.docx', type: 'docx', size: '1.1 MB', date: '2026-03-20', status: 'private', tags: ['#Architecture', '#Design'], owner: 'akhoa' },
-  { id: 3, name: 'Mô hình AWS Topology.png', type: 'image', size: '4.5 MB', date: '2026-03-18', status: 'public', tags: ['#AWS', '#Infrastructure'], owner: 'qtran' },
-  { id: 4, name: 'Best Practices React.pdf', type: 'pdf', size: '800 KB', date: '2026-03-15', status: 'public', tags: ['#React', '#Frontend'], owner: 'qtran' },
+  { id: 1, name: 'Giáo trình Cloud Computing.pdf', type: 'pdf', size: '2.4 MB', date: '2026-03-21', status: 'private', tags: ['#CloudComputing', '#AWS'], owner: 'akhoa', viewedTime: '2 phút trước' },
+  { id: 2, name: 'Kiến trúc hệ thống.docx', type: 'docx', size: '1.1 MB', date: '2026-03-20', status: 'private', tags: ['#Architecture', '#Design'], owner: 'akhoa', viewedTime: '1 giờ trước' },
+  { id: 3, name: 'Mô hình AWS Topology.png', type: 'image', size: '4.5 MB', date: '2026-03-18', status: 'public', tags: ['#AWS', '#Infrastructure'], owner: 'qtran', viewedTime: '3 giờ trước' },
+  { id: 4, name: 'Best Practices React.pdf', type: 'pdf', size: '800 KB', date: '2026-03-15', status: 'public', tags: ['#React', '#Frontend'], owner: 'qtran', viewedTime: '1 ngày trước' },
 ];
 
 // --- MOCK SHARED FILES (Được chia sẻ với tôi) ---
@@ -33,8 +33,52 @@ const mockFiles =[
 const mockSharedFiles = [
   { id: 101, name: 'Đề cương ôn thi môn Cloud.pdf', type: 'pdf', size: '3.2 MB', date: '2026-03-20', status: 'private', tags: ['#Ôn thi', '#Cloud'], owner: 'qtran', sharedBy: 'Q Trân', sharedDate: '2026-03-20' },
   { id: 102, name: 'Slide bài 5 - Docker & Kubernetes.pptx', type: 'docx', size: '5.7 MB', date: '2026-03-18', status: 'private', tags: ['#Docker', '#Kubernetes'], owner: 'qtran', sharedBy: 'Q Trân', sharedDate: '2026-03-19' },
-  { id: 103, name: 'Báo cáo Nhóm 3 - AWS Project.docx', type: 'docx', size: '2.1 MB', date: '2026-03-19', status: 'private', tags: ['#GroupProject', '#AWS'], owner: 'akhoa', sharedBy: 'Ạ Khoa', sharedDate: '2026-03-19' },
+  { id: 103, name: 'Báo cáo Nhóm 3 - AWS Project.docx', type: 'docx', size: '2.1 MB', date: '2026-03-19', status: 'private', tags: ['#GroupProject', '#AWS'], owner: 'qtran', sharedBy: 'Q Trân', sharedDate: '2026-03-19' },
 ];
+
+// --- MOCK NOTIFICATIONS ---
+const mockNotifications = [
+  {
+    id: 1,
+    userId: 1,
+    type: 'share_request',
+    from: 'Q Trân',
+    fromUsername: 'qtran',
+    message: 'Q Trân yêu cầu quyền chia sẻ file "Giáo trình Cloud Computing.pdf"',
+    fileId: 1,
+    fileName: 'Giáo trình Cloud Computing.pdf',
+    status: 'unread',
+    createdAt: '2026-04-04T12:30:00'
+  },
+  {
+    id: 2,
+    userId: 1,
+    type: 'new_document',
+    from: 'Admin',
+    message: 'Có tài liệu mới từ Admin: "Best Practices AWS 2026" đã được đăng',
+    status: 'unread',
+    createdAt: '2026-04-04T11:15:00'
+  },
+  {
+    id: 3,
+    userId: 1,
+    type: 'storage_warning',
+    message: '⚠️ Cảnh báo: Dung lượng S3 của bạn sắp đầy (90/100GB)',
+    severity: 'warning',
+    status: 'unread',
+    createdAt: '2026-04-04T10:00:00'
+  },
+  {
+    id: 4,
+    userId: 1,
+    type: 'share_notification',
+    from: 'Q Trân',
+    message: 'Q Trân đã chia sẻ file "Mô hình AWS Topology.png" cho bạn',
+    status: 'read',
+    createdAt: '2026-04-03T15:30:00'
+  }
+];
+
 
 // --- COMPONENTS ---
 
@@ -606,7 +650,35 @@ const UploadModal = ({ isOpen, onClose }) => {
 // 3. Share Modal (Signed URL)
 const ShareModal = ({ isOpen, onClose, file }) => {
   const [access, setAccess] = useState('private');
-  
+  const [shareLink, setShareLink] = useState('');
+  const [linkCreated, setLinkCreated] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generateShareLink = () => {
+    // Mock link generation
+    const mockLink = `https://cloudhub.vn/share/${Math.random().toString(36).substring(7)}`;
+    setShareLink(mockLink);
+    setLinkCreated(true);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePublicConfirm = () => {
+    // Logic to make file public (will be handled in parent component)
+    onClose();
+  };
+
+  const handleModalClose = () => {
+    setShareLink('');
+    setLinkCreated(false);
+    setCopied(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -616,7 +688,7 @@ const ShareModal = ({ isOpen, onClose, file }) => {
           <h3 className="font-semibold text-lg text-slate-800 flex items-center gap-2">
             <ShieldCheck className="text-blue-600" size={20} /> Cấu hình chia sẻ
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+          <button onClick={handleModalClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
         </div>
         
         <div className="p-6 space-y-5">
@@ -628,37 +700,84 @@ const ShareModal = ({ isOpen, onClose, file }) => {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors border-slate-200">
-              <input type="radio" name="access" checked={access === 'public'} onChange={() => setAccess('public')} className="mt-1 text-blue-600 focus:ring-blue-500" />
-              <div>
-                <p className="font-medium text-slate-800">Công khai cộng đồng (StuDocu)</p>
-                <p className="text-sm text-slate-500">Mọi người trong hệ thống đều có thể tìm thấy và tải xuống.</p>
+          {!linkCreated ? (
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors border-slate-200">
+                <input type="radio" name="access" checked={access === 'public'} onChange={() => setAccess('public')} className="mt-1 text-blue-600 focus:ring-blue-500" />
+                <div>
+                  <p className="font-medium text-slate-800">Công khai cộng đồng (StuDocu)</p>
+                  <p className="text-sm text-slate-500">Mọi người trong hệ thống đều có thể tìm thấy và tải xuống.</p>
+                </div>
+              </label>
+              
+              <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors border-blue-200 bg-blue-50/50">
+                <input type="radio" name="access" checked={access === 'private'} onChange={() => setAccess('private')} className="mt-1 text-blue-600 focus:ring-blue-500" />
+                <div className="flex-1">
+                  <p className="font-medium text-slate-800">Liên kết bảo mật (AWS S3)</p>
+                  <p className="text-sm text-slate-500 mb-3">Chỉ những ai có link bảo mật mới có thể xem.</p>
+                  {access === 'private' && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+                      <p className="font-medium">⏰ Lưu ý: Liên kết sẽ tự động hết hạn sau 60 phút để bảo mật.</p>
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+                <p className="font-medium">⏰ Lưu ý: Liên kết sẽ tự động hết hạn sau 60 phút để bảo mật.</p>
               </div>
-            </label>
-            
-            <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors border-blue-200 bg-blue-50/50">
-              <input type="radio" name="access" checked={access === 'private'} onChange={() => setAccess('private')} className="mt-1 text-blue-600 focus:ring-blue-500" />
-              <div className="flex-1">
-                <p className="font-medium text-slate-800">Riêng tư qua Signed URL (AWS S3)</p>
-                <p className="text-sm text-slate-500 mb-2">Chỉ những ai có link bảo mật mới có thể xem.</p>
-                {access === 'private' && (
-                  <select className="w-full text-sm p-2 border border-slate-300 rounded-md focus:ring-blue-500 outline-none">
-                    <option>Hết hạn sau 1 giờ</option>
-                    <option>Hết hạn sau 24 giờ</option>
-                    <option>Hết hạn sau 7 ngày</option>
-                  </select>
-                )}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Liên kết chia sẻ của bạn:</label>
+                <div className="flex items-center gap-2 bg-slate-100 p-3 rounded-lg border border-slate-300">
+                  <input 
+                    type="text" 
+                    value={shareLink} 
+                    readOnly 
+                    className="flex-1 bg-transparent text-sm text-slate-700 focus:outline-none"
+                  />
+                  <button 
+                    onClick={handleCopyLink}
+                    className="p-2 text-slate-600 hover:bg-slate-200 rounded transition-colors"
+                    title="Sao chép"
+                  >
+                    {copied ? '✓' : '📋'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">{copied ? '✓ Đã sao chép vào clipboard!' : 'Click biểu tượng để sao chép liên kết'}</p>
               </div>
-            </label>
-          </div>
+              <p className="text-xs text-slate-600 bg-blue-50 p-3 rounded border border-blue-200">
+                💡 Gửi liên kết này cho bạn bè hoặc nhóm của bạn. Họ sẽ có thể xem file trong 60 phút.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-\[#120368\] rounded-lg hover:bg-teal-700 flex items-center gap-2">
-            <LinkIcon size={16} /> Tạo Link Shared
-          </button>
+          <button onClick={handleModalClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
+          {!linkCreated && (
+            <button 
+              onClick={access === 'public' ? handlePublicConfirm : generateShareLink}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 flex items-center gap-2 transition-all"
+              style={{ background: '#120368' }}
+            >
+              {access === 'public' ? (
+                <>🌐 Xác nhận Công khai</>
+              ) : (
+                <><LinkIcon size={16} /> Tạo Link Shared</>
+              )}
+            </button>
+          )}
+          {linkCreated && (
+            <button 
+              onClick={handleModalClose}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 transition-all"
+              style={{ background: '#120368' }}
+            >
+              ✓ Xong
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -681,6 +800,13 @@ export default function App() {
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [fileToView, setFileToView] = useState(null);
   const [permissionChange, setPermissionChange] = useState(null);
+  const [notifications, setNotifications] = useState(mockNotifications);
+  const [requestShareFile, setRequestShareFile] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
 
   const handleLogin = (account) => {
     setCurrentUser(account);
@@ -712,6 +838,45 @@ export default function App() {
 
   const handleViewFile = (file) => {
     setFileToView(file);
+  };
+
+  const handleRequestSharePermission = (file) => {
+    setRequestShareFile(file);
+  };
+
+  const confirmRequestPermission = () => {
+    if (requestShareFile) {
+      // Add to pending notifications
+      const newNotification = {
+        id: Math.max(0, ...notifications.map(n => n.id)) + 1,
+        userId: requestShareFile.ownerId || 1,
+        type: 'share_request',
+        from: currentUser.fullName,
+        fromUsername: currentUser.username,
+        message: currentUser.fullName + ' yêu cầu quyền chia sẻ file "' + requestShareFile.name + '"',
+        fileId: requestShareFile.id,
+        fileName: requestShareFile.name,
+        status: 'unread',
+        createdAt: new Date().toISOString()
+      };
+      setNotifications([...notifications, newNotification]);
+      setRequestShareFile(null);
+    }
+  };
+
+  const handleApproveRequest = (notificationId) => {
+    setNotifications(notifications.filter(n => n.id !== notificationId));
+  };
+
+  const handleRejectRequest = (notificationId) => {
+    setNotifications(notifications.filter(n => n.id !== notificationId));
+  };
+
+  const popularHashtags = ['#Cloud', '#AWS', '#Docker', '#React', '#Design', '#Frontend'];
+  
+  const handleSearchSelect = (tag) => {
+    setSearchQuery(tag);
+    setShowSearchSuggestions(false);
   };
 
   if (!isAuthenticated) {
@@ -804,18 +969,167 @@ export default function App() {
               <input 
                 type="text" 
                 placeholder="Tìm kiếm tài liệu, hashtag..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setShowSearchSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSearchSuggestions(false), 200)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm focus:bg-white focus:border-\[#120368\] focus:ring-2 focus:ring-teal-200 outline-none transition-all"
               />
+              {showSearchSuggestions && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                  <div className="p-3 space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase px-2">Hashtag phổ biến</p>
+                    {popularHashtags.map((tag, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleSearchSelect(tag)}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-slate-100 text-sm text-slate-700 transition-colors"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-              <button className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" title="Notifications">
-                <Bell size={20} />
-              </button>
-              <button className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" title="Settings">
+              <div className="relative">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" 
+                  title="Notifications"
+                >
+                  <Bell size={20} />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-1 right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
+                {showNotifications && notifications.length > 0 && (
+                  <div className="absolute top-full right-0 mt-2 w-96 bg-white border border-slate-200 rounded-lg shadow-2xl z-50">
+                    <div className="p-4 border-b border-slate-100">
+                      <h3 className="font-semibold text-slate-800">Thông báo ({notifications.length})</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto space-y-3 p-4">
+                      {notifications.map((notif) => {
+                        if (notif.type === 'share_request') {
+                          return (
+                            <div key={notif.id} className={`p-3 border rounded-lg ${
+                              notif.status === 'unread' 
+                                ? 'bg-blue-50 border-blue-200' 
+                                : 'bg-slate-50 border-slate-200'
+                            }`}>
+                              <div className="mb-2">
+                                <p className={`text-sm font-medium ${
+                                  notif.status === 'unread' ? 'font-bold text-slate-900' : 'text-slate-800'
+                                }`}>{notif.from}</p>
+                                <p className="text-xs text-slate-600">yêu cầu chia sẻ "<strong>{notif.fileName}</strong>"</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApproveRequest(notif.id)}
+                                  className="flex-1 px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors"
+                                >
+                                  Đồng ý
+                                </button>
+                                <button
+                                  onClick={() => handleRejectRequest(notif.id)}
+                                  className="flex-1 px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 transition-colors"
+                                >
+                                  Từ chối
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        } else if (notif.type === 'new_document') {
+                          return (
+                            <div key={notif.id} className={`p-3 border rounded-lg ${
+                              notif.status === 'unread' 
+                                ? 'bg-purple-50 border-purple-200' 
+                                : 'bg-slate-50 border-slate-200'
+                            }`}>
+                              <p className={`text-sm ${
+                                notif.status === 'unread' ? 'font-bold text-slate-900' : 'text-slate-800'
+                              }`}>{notif.message}</p>
+                              <p className="text-xs text-slate-500 mt-1">{new Date(notif.createdAt).toLocaleString('vi-VN')}</p>
+                            </div>
+                          );
+                        } else if (notif.type === 'storage_warning') {
+                          return (
+                            <div key={notif.id} className={`p-3 border rounded-lg ${
+                              notif.severity === 'warning' 
+                                ? 'bg-yellow-50 border-yellow-200' 
+                                : 'bg-red-50 border-red-200'
+                            }`}>
+                              <p className={`text-sm font-medium flex items-center gap-2 ${
+                                notif.status === 'unread' ? 'font-bold text-slate-900' : 'text-slate-800'
+                              }`}>
+                                <AlertCircle size={14} className="text-yellow-600" />
+                                {notif.message}
+                              </p>
+                            </div>
+                          );
+                        } else {
+                          // share_notification or other types
+                          return (
+                            <div key={notif.id} className={`p-3 border rounded-lg ${
+                              notif.status === 'unread' 
+                                ? 'bg-green-50 border-green-200' 
+                                : 'bg-slate-50 border-slate-200'
+                            }`}>
+                              <p className={`text-sm ${
+                                notif.status === 'unread' ? 'font-bold text-slate-900' : 'text-slate-800'
+                              }`}>{notif.message}</p>
+                              <p className="text-xs text-slate-500 mt-1">{new Date(notif.createdAt).toLocaleString('vi-VN')}</p>
+                            </div>
+                          );
+                        }
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={() => setShowSettings(!showSettings)}
+                className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-lg hover:text-slate-900 transition-colors" 
+                title="Settings"
+              >
                 <Settings size={20} />
               </button>
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold border-2`} style={{ background: '#120368', borderColor: '#E0EAFA' }}>
-                {currentUser?.fullName?.charAt(0).toUpperCase()}
+              <div className="relative">
+                <button 
+                  onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold border-2 cursor-pointer hover:opacity-90 transition-opacity" 
+                  style={{ background: '#120368', borderColor: '#E0EAFA' }}
+                >
+                  {currentUser?.fullName?.charAt(0).toUpperCase()}
+                </button>
+                {showUserDropdown && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-2xl z-50">
+                    <div className="p-4 border-b border-slate-100 space-y-3">
+                      <div>
+                        <p className="font-semibold text-slate-900">{currentUser?.fullName}</p>
+                        <p className="text-xs text-slate-600">{currentUser?.email}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-medium text-slate-700">Lưu trữ đã dùng</span>
+                          <span className="text-slate-600">2.4 GB / 5 GB</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full" style={{ width: '48%' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 border-t border-slate-100"
+                    >
+                      <LogOut size={16} /> Đăng xuất
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -830,7 +1144,13 @@ export default function App() {
                   <h1 className="text-4xl font-bold text-slate-900 capitalize">
                     {navItems.find(i => i.id === activeTab)?.label}
                   </h1>
-                  <p className="text-sm text-slate-600 mt-2">Quản lý và chia sẻ tài liệu học tập của bạn</p>
+                  <p className="text-sm text-slate-600 mt-2">
+                    {activeTab === 'my-docs' && 'Quản lý và chia sẻ tài liệu học tập của bạn'}
+                    {activeTab === 'community' && 'Khám phá tài liệu được chia sẻ công khai từ cộng đồng'}
+                    {activeTab === 'shared' && 'Tài liệu bạn bè đã chia sẻ riêng cho bạn'}
+                    {activeTab === 'recent' && 'Những tài liệu bạn vừa xem gần đây'}
+                    {activeTab === 'trash' && 'Tài liệu bạn đã xóa sẽ tạm còn ở đây trong 30 ngày'}
+                  </p>
                 </div>
                 <div className="flex bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
                   <button 
@@ -873,7 +1193,7 @@ export default function App() {
                       <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                         <Folder size={48} className="mb-3 opacity-30" />
                         <p className="text-lg font-medium">Không có tài liệu</p>
-                        <p className="text-sm">Hãy {activeTab === 'shared' ? 'yêu cầu chia sẻ' : 'tải lên tài liệu'} của bạn</p>
+                        <p className="text-sm">{activeTab === 'trash' ? 'Thùng rác trống. Tài liệu bị xóa sẽ xuất hiện ở đây' : activeTab === 'shared' ? 'Hãy yêu cầu chia sẻ tài liệu của bạn' : 'Hãy tải lên tài liệu của bạn'}</p>
                       </div>
                     ) : (
                       viewMode === 'grid' ? (
@@ -888,7 +1208,7 @@ export default function App() {
                       </div>
                       <div className="p-5">
                         <h3 className="text-base font-semibold text-slate-900 truncate mb-2 line-clamp-2" title={file.name}>{file.name}</h3>
-                        <p className="text-sm text-slate-600 mb-4">{file.size} • {file.date}</p>
+                        <p className="text-sm text-slate-600 mb-4">{file.size} • {file.date}{activeTab === 'recent' && file.viewedTime ? ` • Xem lúc: ${file.viewedTime}` : ''}</p>
                         
                         {/* Tags */}
                         <div className="flex flex-wrap gap-2 mb-4">
@@ -905,7 +1225,7 @@ export default function App() {
                             background: file.status === 'public' ? '#E0EAFA' : 'rgb(243, 244, 246)',
                             color: file.status === 'public' ? '#120368' : 'rgb(55, 65, 81)'
                           }}>
-                            {file.status === 'public' ? '🌐 Công khai' : '🔒 Riêng tư'}
+                            {file.status === 'public' ? '🌐 Công khai' : activeTab === 'shared' ? `✓ Đã nhận từ ${file.sharedBy}` : '🔒 Riêng tư'}
                           </span>
                           <span className="text-xs text-slate-500">24 downloads</span>
                         </div>
@@ -915,15 +1235,30 @@ export default function App() {
                           <button onClick={() => handleViewFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                             <Eye size={12} /> Xem
                           </button>
-                          <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
-                            <LinkIcon size={12} /> Chia sẻ
-                          </button>
-                          <button onClick={() => setPermissionChange(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
-                            <ShieldCheck size={12} /> Quyền
-                          </button>
-                          <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
-                            <Trash2 size={12} /> Xóa
-                          </button>
+                          {activeTab === 'shared' ? (
+                            <button onClick={() => handleRequestSharePermission(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                              <Share2 size={12} /> Yêu cầu
+                            </button>
+                          ) : (
+                            <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                              <LinkIcon size={12} /> Chia sẻ
+                            </button>
+                          )}
+                          {activeTab === 'my-docs' && (
+                            <>
+                              <button onClick={() => setPermissionChange(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                                <ShieldCheck size={12} /> Quyền
+                              </button>
+                              <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
+                                <Trash2 size={12} /> Xóa
+                              </button>
+                            </>
+                          )}
+                          {activeTab === 'shared' && (
+                            <button onClick={() => handleDeleteFile(file)} className="flex-1 min-w-12 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200 hover:border-red-300">
+                              <Trash2 size={12} /> Gỡ bỏ
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -965,9 +1300,20 @@ export default function App() {
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button onClick={() => handleViewFile(file)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Xem"><Eye size={18} /></button>
-                                  <button onClick={() => setShareFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Chia sẻ"><LinkIcon size={18} /></button>
-                                  <button onClick={() => setPermissionChange(file)} className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Quyền"><ShieldCheck size={18} /></button>
-                                  <button onClick={() => handleDeleteFile(file)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Xóa"><Trash2 size={18} /></button>
+                                  {activeTab === 'shared' ? (
+                                    <button onClick={() => handleRequestSharePermission(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Yêu cầu quyền chia sẻ"><Share2 size={18} /></button>
+                                  ) : (
+                                    <button onClick={() => setShareFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Chia sẻ"><LinkIcon size={18} /></button>
+                                  )}
+                                  {activeTab === 'my-docs' && (
+                                    <>
+                                      <button onClick={() => setPermissionChange(file)} className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors" title="Quyền"><ShieldCheck size={18} /></button>
+                                      <button onClick={() => handleDeleteFile(file)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Xóa"><Trash2 size={18} /></button>
+                                    </>
+                                  )}
+                                  {activeTab === 'shared' && (
+                                    <button onClick={() => handleDeleteFile(file)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Gỡ bỏ"><Trash2 size={18} /></button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1148,6 +1494,111 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Request Share Permission Modal */}
+      {requestShareFile && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+                <Share2 size={24} className="text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800">Yêu cầu quyền chia sẻ?</h3>
+              <p className="text-slate-600">Bạn muốn gửi yêu cầu xin quyền chia sẻ tài liệu <strong>"{requestShareFile.name}"</strong> đến <strong>{requestShareFile.sharedBy}</strong>?</p>
+              <p className="text-xs text-slate-500 bg-blue-50 p-3 rounded border border-blue-200">
+                💡 Chủ sở hữu sẽ nhận được thông báo và có thể phê duyệt yêu cầu của bạn.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex gap-3 justify-end">
+              <button 
+                onClick={() => setRequestShareFile(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={confirmRequestPermission}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90 flex items-center gap-2"
+                style={{ background: '#120368' }}
+              >
+                <Share2 size={16} /> Gửi yêu cầu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                <Settings size={20} /> Cài đặt
+              </h3>
+              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Storage Section */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-slate-900">Dung lượng lưu trữ</h4>
+                  <span className="text-sm font-medium text-slate-600" style={{ color: '#120368' }}>2.4 GB / 5 GB</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full transition-all" style={{ width: '48%' }}></div>
+                </div>
+                <p className="text-xs text-slate-600">Bạn đã sử dụng 48% dung lượng miễn phí</p>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+                  💡 <strong>Nâng cấp tài khoản</strong> để có thêm 100GB lưu trữ
+                </div>
+              </div>
+
+              {/* Preferences Section */}
+              <div className="space-y-3 border-t border-slate-200 pt-4">
+                <h4 className="font-semibold text-slate-900">Tùy chọn</h4>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                  <span className="text-sm text-slate-700">Nhận thông báo chia sẻ file</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" defaultChecked className="w-4 h-4 rounded" />
+                  <span className="text-sm text-slate-700">Nhận email thông báo yêu cầu</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" />
+                  <span className="text-sm text-slate-700">Cho phép chia sẻ công khai</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                style={{ background: '#120368' }}
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Click outside handlers */}
+      {(showNotifications || showUserDropdown || showSearchSuggestions) && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => {
+            setShowNotifications(false);
+            setShowUserDropdown(false);
+            setShowSearchSuggestions(false);
+          }}
+        />
       )}
     </div>
   );
