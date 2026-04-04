@@ -83,21 +83,30 @@ const mockNotifications = [
 // --- COMPONENTS ---
 
 // 1. Landing Page - Trang chủ
-const LandingPage = ({ onGetStarted }) => {
+const LandingPage = ({ onGetStarted, onLoginClick }) => {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+      <header
+        className="sticky top-0 z-50 border-b border-indigo-900/60 backdrop-blur-sm"
+        style={{ backgroundColor: '#120368' }}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-\[#120368\] to-\[#120368\] text-white font-bold">
-              D
-            </div>
-            <span className="text-xl font-bold text-slate-900">DocHub</span>
+          <div className="flex items-center">
+            <span className="text-xl font-bold text-white">DocHub</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="#" className="text-sm font-medium text-slate-600 hover:text-slate-900">Đăng nhập</a>
-            <button onClick={onGetStarted} className="rounded-lg px-4 py-2 text-sm font-semibold text-white hover:shadow-lg" style={{ background: '#120368' }}>
+            <button
+              type="button"
+              onClick={onLoginClick}
+              className="rounded-lg border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#23A0E3] hover:text-white"
+            >
+              Đăng nhập
+            </button>
+            <button
+              onClick={onGetStarted}
+              className="rounded-lg border border-transparent bg-transparent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#23A0E3] hover:text-white"
+            >
               Tạo tài khoản
             </button>
           </div>
@@ -124,15 +133,12 @@ const LandingPage = ({ onGetStarted }) => {
             </div>
           </div>
           <div className="flex items-center justify-center">
-            <div className="aspect-square rounded-2xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center text-slate-400">
-              <div className="space-y-3 px-8">
-                <div className="h-3 w-3/4 rounded-full bg-slate-300"></div>
-                <div className="h-3 w-1/2 rounded-full bg-slate-200"></div>
-                <div className="space-y-2 pt-4">
-                  <div className="h-2 w-full rounded-full bg-slate-200"></div>
-                  <div className="h-2 w-5/6 rounded-full bg-slate-200"></div>
-                </div>
-              </div>
+            <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 shadow-xl shadow-blue-100/60">
+              <img
+                src="/images/cloud-doc-hub-intro.png"
+                alt="Minh họa hệ thống cloud chia sẻ tài liệu"
+                className="h-auto w-full max-w-sm rounded-2xl"
+              />
             </div>
           </div>
         </div>
@@ -214,14 +220,18 @@ const LandingPage = ({ onGetStarted }) => {
 };
 
 // 2. Auth Screen - Split Screen Login/Register
-const AuthScreen = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
+const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
+  const [isLogin, setIsLogin] = useState(initialMode !== 'register');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setIsLogin(initialMode !== 'register');
+  }, [initialMode]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -254,8 +264,16 @@ const AuthScreen = ({ onLogin }) => {
       {/* Left - Form */}
       <div className="flex bg-white flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
+          <button
+            type="button"
+            onClick={onBackHome}
+            className="mb-6 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-2xl font-black text-[#120368] transition hover:bg-slate-50"
+          >
+            ←
+          </button>
+
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#23A0E3] text-white font-bold text-lg">
               D
             </div>
             <div>
@@ -320,7 +338,7 @@ const AuthScreen = ({ onLogin }) => {
               </div>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
               >
                 Đăng nhập
               </button>
@@ -386,7 +404,7 @@ const AuthScreen = ({ onLogin }) => {
               </label>
               <button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-all duration-200 mt-6"
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
               >
                 Đăng ký
               </button>
@@ -411,9 +429,11 @@ const AuthScreen = ({ onLogin }) => {
       {/* Right - Illustration */}
       <div className="hidden lg:flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-12">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-24 h-24 mx-auto bg-blue-200 rounded-full flex items-center justify-center text-5xl">
-            {isLogin ? '💬' : '👤'}
-          </div>
+          <img
+            src="/images/auth-cloud-illustration.png"
+            alt="Minh họa hạ tầng cloud"
+            className="mx-auto h-auto w-full max-w-sm"
+          />
           <h3 className="text-2xl font-bold text-slate-900">
             {isLogin ? 'Chia sẻ tài liệu dễ dàng' : 'Bắt đầu miễn phí'}
           </h3>
@@ -422,11 +442,6 @@ const AuthScreen = ({ onLogin }) => {
               ? 'Lưu trữ, chia sẻ và quản lý tài liệu của bạn trên cloud một cách an toàn và hiệu quả.'
               : 'Không cần thẻ tín dụng. Tạo tài khoản ngay và bắt đầu chia sẻ kiến thức cùng nhóm.'}
           </p>
-          <ul className="space-y-2 text-left text-sm text-slate-600">
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Bảo mật hàng đầu' : 'Miễn phí vĩnh viễn'}</li>
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Chia sẻ nhanh chóng' : 'Không cần thẻ tín dụng'}</li>
-            <li className="flex items-center gap-2"><span className="text-blue-600">✓</span> {isLogin ? 'Quản lý quyền hạn' : 'Dễ dàng nâng cấp sau'}</li>
-          </ul>
         </div>
       </div>
     </div>
@@ -434,19 +449,20 @@ const AuthScreen = ({ onLogin }) => {
 };
 
 // 2. Upload Modal
-const UploadModal = ({ isOpen, onClose }) => {
+const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
   const [progress, setProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [isPublic, setIsPublic] = useState(false);
   const [topic, setTopic] = useState('');
   const [hashtags, setHashtags] = useState('');
+  const [uploadError, setUploadError] = useState('');
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = React.useRef(null);
 
   useEffect(() => {
     let interval;
-    if (isUploading && progress < 100) {
+    if (isUploading && progress > 0 && progress < 100) {
       interval = setInterval(() => setProgress(p => Math.min(p + 10, 100)), 300);
     } else if (progress === 100) {
       setTimeout(() => { 
@@ -456,6 +472,7 @@ const UploadModal = ({ isOpen, onClose }) => {
         setSelectedFile(null);
         setTopic('');
         setHashtags('');
+        setUploadError('');
       }, 1000);
     }
     return () => clearInterval(interval);
@@ -466,10 +483,12 @@ const UploadModal = ({ isOpen, onClose }) => {
       const file = files[0];
       const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
       setSelectedFile({
+        rawFile: file,
         name: file.name,
         size: sizeInMB,
         type: file.type
       });
+      setUploadError('');
     }
   };
 
@@ -495,6 +514,82 @@ const UploadModal = ({ isOpen, onClose }) => {
 
   const handleInputClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const formatSize = (sizeInBytes) => {
+    if (!sizeInBytes) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = sizeInBytes;
+    let unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+    return `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`;
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile?.rawFile) {
+      setUploadError('Vui lòng chọn file trước khi tải lên');
+      return;
+    }
+
+    try {
+      setUploadError('');
+      setIsUploading(true);
+      setProgress(10);
+
+      const formData = new FormData();
+      formData.append('file', selectedFile.rawFile);
+      formData.append('isPublic', String(isPublic));
+      formData.append('topic', topic);
+      formData.append('hashtags', hashtags);
+      if (currentUser?.id) {
+        formData.append('ownerId', String(currentUser.id));
+      }
+
+      const response = await fetch('http://localhost:8080/api/documents/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      setProgress(80);
+
+      const rawBody = await response.text();
+      let responseBody = {};
+      if (rawBody) {
+        try {
+          responseBody = JSON.parse(rawBody);
+        } catch {
+          responseBody = { message: rawBody };
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(responseBody?.message || 'Upload thất bại');
+      }
+
+      setProgress(100);
+
+      const normalizedFile = {
+        id: responseBody.id,
+        name: responseBody.fileName,
+        type: responseBody.fileType,
+        size: formatSize(responseBody.fileSize),
+        date: responseBody.createdAt ? responseBody.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        status: responseBody.isPublic ? 'public' : 'private',
+        tags: responseBody.hashtags
+          ? responseBody.hashtags.split(',').map(tag => tag.trim()).filter(Boolean)
+          : [],
+        ownerId: responseBody.ownerId,
+        owner: currentUser?.username,
+      };
+      onUploaded?.(normalizedFile);
+    } catch (error) {
+      setIsUploading(false);
+      setProgress(0);
+      setUploadError(error.message || 'Không thể tải lên file');
+    }
   };
 
   if (!isOpen) return null;
@@ -549,6 +644,12 @@ const UploadModal = ({ isOpen, onClose }) => {
               >
                 ✕
               </button>
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {uploadError}
             </div>
           )}
 
@@ -636,7 +737,8 @@ const UploadModal = ({ isOpen, onClose }) => {
             Hủy
           </button>
           <button 
-            onClick={() => setIsUploadOpen(true)} 
+            onClick={handleUpload}
+            disabled={isUploading}
             className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 text-white font-semibold py-2.5 rounded-lg hover:shadow-lg hover:shadow-teal-500/30 disabled:opacity-50 transition-all"
           >
             <UploadCloud size={16} /> {isUploading ? 'Đang xử lý...' : 'Lưu vào Cloud'}
@@ -790,7 +892,7 @@ const ShareModal = ({ isOpen, onClose, file }) => {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState(null);
   const [activeTab, setActiveTab] = useState('my-docs');
   const [viewMode, setViewMode] = useState('grid');
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -807,6 +909,7 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [files, setFiles] = useState([]);
 
   const handleLogin = (account) => {
     setCurrentUser(account);
@@ -836,8 +939,28 @@ export default function App() {
     }
   };
 
-  const handleViewFile = (file) => {
-    setFileToView(file);
+  const handleViewFile = async (file) => {
+    if (!file?.id) {
+      alert('Không thể mở file này vì thiếu mã định danh (id).');
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/preview-url`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Không lấy được link xem file.');
+      }
+
+      const body = await response.json();
+      if (!body?.url) {
+        throw new Error('Backend không trả về URL xem file hợp lệ.');
+      }
+
+      window.open(body.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      alert(`Mở file thất bại: ${error.message}. Vui lòng khởi động lại backend để cập nhật API mới rồi thử lại.`);
+    }
   };
 
   const handleRequestSharePermission = (file) => {
@@ -879,11 +1002,58 @@ export default function App() {
     setShowSearchSuggestions(false);
   };
 
-  if (!isAuthenticated) {
-    if (showAuthModal) {
-      return <AuthScreen onLogin={handleLogin} />;
+  const handleUploadedFile = (newFile) => {
+    setFiles((prevFiles) => [newFile, ...prevFiles]);
+  };
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) {
+      return;
     }
-    return <LandingPage onGetStarted={() => setShowAuthModal(true)} />;
+
+    const toDisplayFile = (doc) => {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let size = doc.fileSize || 0;
+      let unitIndex = 0;
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+      }
+
+      return {
+        id: doc.id,
+        name: doc.fileName,
+        type: doc.fileType || 'unknown',
+        size: `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`,
+        date: doc.createdAt ? doc.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        status: doc.isPublic ? 'public' : 'private',
+        tags: doc.hashtags ? doc.hashtags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+        ownerId: doc.ownerId,
+        owner: doc.ownerId === currentUser.id ? currentUser.username : `user-${doc.ownerId}`,
+      };
+    };
+
+    const loadDocuments = async () => {
+      try {
+        const response = await fetch('http://localhost:8080/api/documents');
+        if (!response.ok) {
+          throw new Error('Cannot load documents');
+        }
+        const docs = await response.json();
+        setFiles(Array.isArray(docs) ? docs.map(toDisplayFile) : []);
+      } catch {
+        setFiles(mockFiles);
+      }
+    };
+
+    loadDocuments();
+  }, [isAuthenticated, currentUser]);
+
+  if (!isAuthenticated) {
+    if (authMode) {
+      return <AuthScreen onLogin={handleLogin} onBackHome={() => setAuthMode(null)} initialMode={authMode} />;
+    }
+    return <LandingPage onGetStarted={() => setAuthMode('register')} onLoginClick={() => setAuthMode('login')} />;
   }
 
   const getFileIcon = (type) => {
@@ -1178,11 +1348,11 @@ export default function App() {
                 if (activeTab === 'shared') {
                   filesToDisplay = mockSharedFiles;
                 } else if (activeTab === 'community') {
-                  filesToDisplay = mockFiles.filter(f => f.status === 'public');
+                  filesToDisplay = files.filter(f => f.status === 'public');
                 } else if (activeTab === 'my-docs') {
-                  filesToDisplay = mockFiles.filter(f => f.owner === currentUser.username);
+                  filesToDisplay = files.filter(f => (f.ownerId && f.ownerId === currentUser.id) || f.owner === currentUser.username);
                 } else if (activeTab === 'recent') {
-                  filesToDisplay = mockFiles.slice(0, 2); // Giả lập recent
+                  filesToDisplay = files.slice(0, 2);
                 } else if (activeTab === 'trash') {
                   filesToDisplay = []; // Thùng rác trống
                 }
@@ -1331,7 +1501,12 @@ export default function App() {
       </main>
 
       {/* Modals */}
-      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        onUploaded={handleUploadedFile}
+        currentUser={currentUser}
+      />
       <ShareModal isOpen={!!shareFile} onClose={() => setShareFile(null)} file={shareFile} />
       
       {/* Logout Confirmation Modal */}
