@@ -36,8 +36,11 @@ CREATE TABLE `documents` (
   `status` int NOT NULL DEFAULT '0',
   `deleted_at` datetime DEFAULT NULL,
   `original_path` varchar(255) DEFAULT NULL,
+  `share_token` varchar(255) DEFAULT NULL,
+  `share_enabled` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_documents_share_token` (`share_token`),
   KEY `fk_owner` (`owner_id`),
   CONSTRAINT `fk_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

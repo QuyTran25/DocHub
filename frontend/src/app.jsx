@@ -18,6 +18,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 const mockAccounts = [
   { id: 1, username: 'akhoa', password: '2110', email: 'akhoa@university.edu', fullName: 'Ạ Khoa', role: 'user' },
   { id: 2, username: 'qtran', password: '2506', email: 'qtran@university.edu', fullName: 'Q Trân', role: 'user' },
+  { id: 3, username: 'vsang', password: '0708', email: 'vsang@university.edu', fullName: 'V Sang', role: 'user' },
 ];
 
 // --- MOCK DATA ---
@@ -750,17 +751,69 @@ const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
 };
 
 // 3. Share Modal (Signed URL)
-const ShareModal = ({ isOpen, onClose, file }) => {
+const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated }) => {
   const [access, setAccess] = useState('private');
   const [shareLink, setShareLink] = useState('');
   const [linkCreated, setLinkCreated] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const generateShareLink = () => {
-    // Mock link generation
-    const mockLink = `https://cloudhub.vn/share/${Math.random().toString(36).substring(7)}`;
-    setShareLink(mockLink);
-    setLinkCreated(true);
+  useEffect(() => {
+    if (!file) {
+      return;
+    }
+    setAccess(file.status === 'public' ? 'public' : 'private');
+    setShareLink('');
+    setLinkCreated(false);
+    setCopied(false);
+    setError('');
+  }, [file]);
+
+  const generateShareLink = async () => {
+    if (!file?.id || !currentUser?.id) {
+      setError('Thiếu thông tin người dùng hoặc tài liệu để tạo link.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/share-link?ownerId=${currentUser.id}`, {
+        method: 'POST',
+      });
+
+      const rawBody = await response.text();
+      const responseBody = rawBody ? JSON.parse(rawBody) : {};
+
+      if (!response.ok) {
+        throw new Error(responseBody?.message || rawBody || 'Không thể tạo link chia sẻ');
+      }
+
+      if (responseBody.url) {
+        try {
+          const shareUrl = new URL(responseBody.url);
+          const segments = shareUrl.pathname.split('/').filter(Boolean);
+          const token = segments.length >= 4 ? segments[3] : null;
+          if (token) {
+            setShareLink(`${window.location.origin}/?shareToken=${token}`);
+          } else {
+            setShareLink(responseBody.url);
+          }
+        } catch {
+          setShareLink(responseBody.url);
+        }
+      } else {
+        setShareLink('');
+      }
+      setLinkCreated(true);
+      onPermissionUpdated?.();
+    } catch (err) {
+      setError(err.message || 'Không thể tạo link chia sẻ');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -769,15 +822,39 @@ const ShareModal = ({ isOpen, onClose, file }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handlePublicConfirm = () => {
-    // Logic to make file public (will be handled in parent component)
-    onClose();
+  const handlePublicConfirm = async () => {
+    if (!file?.id || !currentUser?.id) {
+      setError('Thiếu thông tin người dùng hoặc tài liệu để cập nhật quyền.');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/visibility?ownerId=${currentUser.id}&isPublic=true`, {
+        method: 'PATCH',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Không thể đổi quyền sang công khai');
+      }
+
+      onPermissionUpdated?.();
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Không thể đổi quyền sang công khai');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleModalClose = () => {
     setShareLink('');
     setLinkCreated(false);
     setCopied(false);
+    setError('');
     onClose();
   };
 
@@ -854,6 +931,12 @@ const ShareModal = ({ isOpen, onClose, file }) => {
               </p>
             </div>
           )}
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+              {error}
+            </div>
+          )}
         </div>
 
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
@@ -861,13 +944,14 @@ const ShareModal = ({ isOpen, onClose, file }) => {
           {!linkCreated && (
             <button 
               onClick={access === 'public' ? handlePublicConfirm : generateShareLink}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 flex items-center gap-2 transition-all"
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 flex items-center gap-2 transition-all disabled:opacity-60"
               style={{ background: '#120368' }}
             >
               {access === 'public' ? (
-                <>🌐 Xác nhận Công khai</>
+                <>{isLoading ? 'Đang cập nhật...' : '🌐 Xác nhận Công khai'}</>
               ) : (
-                <><LinkIcon size={16} /> Tạo Link Shared</>
+                <>{isLoading ? 'Đang tạo link...' : <><LinkIcon size={16} /> Tạo Link Shared</>}</>
               )}
             </button>
           )}
@@ -890,6 +974,7 @@ const ShareModal = ({ isOpen, onClose, file }) => {
 
 // 6. Main Application
 export default function App() {
+  const initialShareToken = new URLSearchParams(window.location.search).get('shareToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [authMode, setAuthMode] = useState(null);
@@ -911,6 +996,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [files, setFiles] = useState([]);
+  const [pendingShareToken, setPendingShareToken] = useState(initialShareToken || null);
 
   const handleLogin = (account) => {
     setCurrentUser(account);
@@ -1091,7 +1177,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/preview-url`);
+      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/preview-url?userId=${currentUser.id}`);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || 'Không lấy được link xem file.');
@@ -1104,7 +1190,9 @@ export default function App() {
 
       window.open(body.url, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      alert(`Mở file thất bại: ${error.message}. Vui lòng khởi động lại backend để cập nhật API mới rồi thử lại.`);
+      const normalizedMessage = (error?.message || '')
+        .replace('Bai viet goc da bi xoa, vui long doi khoi phuc', 'Bài viết gốc đã bị xóa, vui lòng đợi khôi phục');
+      alert(`Mở file thất bại: ${normalizedMessage || 'Không thể mở tài liệu'}`);
     }
   };
 
@@ -1151,6 +1239,52 @@ export default function App() {
     setFiles((prevFiles) => [newFile, ...prevFiles]);
   };
 
+  const resolveShareTokenToPreviewUrl = async (shareToken, userId) => {
+    const response = await fetch(`http://localhost:8080/api/documents/shared/${shareToken}/preview-url?userId=${userId}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Không thể mở link chia sẻ');
+    }
+
+    const body = await response.json();
+    if (!body?.url) {
+      throw new Error('Link chia sẻ không hợp lệ hoặc đã hết hiệu lực');
+    }
+    return body.url;
+  };
+
+  const updateDocumentVisibility = async (file, isPublic) => {
+    if (!file?.id || !currentUser?.id) {
+      throw new Error('Thiếu thông tin người dùng hoặc tài liệu');
+    }
+
+    const response = await fetch(`http://localhost:8080/api/documents/${file.id}/visibility?ownerId=${currentUser.id}&isPublic=${isPublic}`, {
+      method: 'PATCH',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Không thể cập nhật quyền tài liệu');
+    }
+  };
+
+  const handlePermissionUpdate = async () => {
+    if (!permissionChange) {
+      return;
+    }
+
+    const selected = document.querySelector('input[name="perm"]:checked');
+    const isPublic = selected?.value === 'public';
+
+    try {
+      await updateDocumentVisibility(permissionChange, isPublic);
+      await Promise.all([reloadDocuments(), reloadSharedDocuments()]);
+      setPermissionChange(null);
+    } catch (error) {
+      alert(`Cập nhật quyền thất bại: ${error.message}`);
+    }
+  };
+
   useEffect(() => {
     if (!isAuthenticated || !currentUser) {
       return;
@@ -1160,6 +1294,46 @@ export default function App() {
     reloadTrashDocuments();
     reloadSharedDocuments();
   }, [isAuthenticated, currentUser]);
+
+  useEffect(() => {
+    if (!pendingShareToken || isAuthenticated) {
+      return;
+    }
+    setAuthMode('login');
+  }, [pendingShareToken, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.id || !pendingShareToken) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const openSharedDocument = async () => {
+      try {
+        const previewUrl = await resolveShareTokenToPreviewUrl(pendingShareToken, currentUser.id);
+        if (!cancelled) {
+          window.open(previewUrl, '_blank', 'noopener,noreferrer');
+          await reloadSharedDocuments();
+          setPendingShareToken(null);
+          const params = new URLSearchParams(window.location.search);
+          params.delete('shareToken');
+          const nextQuery = params.toString();
+          window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          alert(`Không thể mở link chia sẻ: ${error.message}`);
+        }
+      }
+    };
+
+    openSharedDocument();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, currentUser, pendingShareToken]);
 
   if (!isAuthenticated) {
     if (authMode) {
@@ -1633,7 +1807,15 @@ export default function App() {
         onUploaded={handleUploadedFile}
         currentUser={currentUser}
       />
-      <ShareModal isOpen={!!shareFile} onClose={() => setShareFile(null)} file={shareFile} />
+      <ShareModal
+        isOpen={!!shareFile}
+        onClose={() => setShareFile(null)}
+        file={shareFile}
+        currentUser={currentUser}
+        onPermissionUpdated={async () => {
+          await Promise.all([reloadDocuments(), reloadSharedDocuments()]);
+        }}
+      />
       
       {/* Logout Confirmation Modal */}
       {logoutConfirm && (
@@ -1780,14 +1962,14 @@ export default function App() {
               <p className="text-sm text-slate-600">File: <strong>{permissionChange.name}</strong></p>
               <div className="space-y-2">
                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                  <input type="radio" name="perm" defaultChecked={permissionChange.status === 'private'} className="w-4 h-4" />
+                  <input type="radio" name="perm" value="private" defaultChecked={permissionChange.status === 'private'} className="w-4 h-4" />
                   <div>
                     <p className="font-medium text-slate-800">🔒 Riêng tư</p>
                     <p className="text-xs text-slate-500">Chỉ bạn xem được</p>
                   </div>
                 </label>
                 <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer">
-                  <input type="radio" name="perm" defaultChecked={permissionChange.status === 'public'} className="w-4 h-4" />
+                  <input type="radio" name="perm" value="public" defaultChecked={permissionChange.status === 'public'} className="w-4 h-4" />
                   <div>
                     <p className="font-medium text-slate-800">🌐 Công khai</p>
                     <p className="text-xs text-slate-500">Mọi người xem được</p>
@@ -1803,7 +1985,7 @@ export default function App() {
                 Hủy
               </button>
               <button 
-                onClick={() => setPermissionChange(null)}
+                onClick={handlePermissionUpdate}
                 className="px-4 py-2 text-sm font-medium text-white bg-\[#120368\] rounded-lg hover:bg-teal-700"
               >
                 Cập nhật

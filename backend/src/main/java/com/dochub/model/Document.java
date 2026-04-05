@@ -58,6 +58,12 @@ public class Document {
     @Column(name = "original_path")
     private String originalPath;
 
+    @Column(name = "share_token", unique = true)
+    private String shareToken;
+
+    @Column(name = "share_enabled", nullable = false)
+    private Boolean shareEnabled = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -164,6 +170,22 @@ public class Document {
 
     public void setOriginalPath(String originalPath) {
         this.originalPath = originalPath;
+    }
+
+    public String getShareToken() {
+        return shareToken;
+    }
+
+    public void setShareToken(String shareToken) {
+        this.shareToken = shareToken;
+    }
+
+    public Boolean getShareEnabled() {
+        return shareEnabled;
+    }
+
+    public void setShareEnabled(Boolean shareEnabled) {
+        this.shareEnabled = shareEnabled;
     }
 
     public LocalDateTime getCreatedAt() {

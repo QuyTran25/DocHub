@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.dochub.dto.PreviewUrlResponse;
+import com.dochub.dto.ShareLinkResponse;
 import com.dochub.dto.UploadDocumentResponse;
 import com.dochub.model.Document;
 import com.dochub.service.DocumentService;
@@ -154,10 +155,50 @@ public class DocumentController {
         }
     }
 
-    @GetMapping("/{documentId}/preview-url")
-    public ResponseEntity<?> getPreviewUrl(@PathVariable Long documentId) {
+    @PostMapping("/{documentId}/share-link")
+    public ResponseEntity<?> createShareLink(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
         try {
-            String url = documentService.getPreviewUrl(documentId);
+            Document document = documentService.getDocumentByIdIncludingTrash(documentId);
+            String url = documentService.createShareLink(documentId, ownerId);
+            return ResponseEntity.ok(new ShareLinkResponse(url, document.getIsPublic(), true));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{documentId}/share-link")
+    public ResponseEntity<?> revokeShareLink(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+        try {
+            documentService.revokeShareLink(documentId, ownerId);
+            return ResponseEntity.ok("Share link revoked");
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @PatchMapping("/{documentId}/visibility")
+    public ResponseEntity<?> updateVisibility(
+            @PathVariable Long documentId,
+            @RequestParam(value = "ownerId", required = false) Integer ownerId,
+            @RequestParam(value = "isPublic") boolean isPublic) {
+        try {
+            Document document = documentService.updateVisibility(documentId, ownerId, isPublic);
+            return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+    }
+
+    @GetMapping("/{documentId}/preview-url")
+    public ResponseEntity<?> getPreviewUrl(
+            @PathVariable Long documentId,
+            @RequestParam(value = "userId", required = false) Integer userId) {
+        try {
+            String url = documentService.getPreviewUrl(documentId, userId);
             return ResponseEntity.ok(new PreviewUrlResponse(url));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
@@ -168,9 +209,11 @@ public class DocumentController {
     }
 
     @GetMapping("/{documentId}/open")
-    public ResponseEntity<?> openDocumentInNewTab(@PathVariable Long documentId) {
+    public ResponseEntity<?> openDocumentInNewTab(
+            @PathVariable Long documentId,
+            @RequestParam(value = "userId", required = false) Integer userId) {
         try {
-            String url = documentService.getPreviewUrl(documentId);
+            String url = documentService.getPreviewUrl(documentId, userId);
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
@@ -180,11 +223,44 @@ public class DocumentController {
         }
     }
 
+    @GetMapping("/shared/{shareToken}/open")
+    public ResponseEntity<?> openDocumentByShareToken(
+            @PathVariable String shareToken,
+            @RequestParam(value = "userId", required = false) Integer userId) {
+        try {
+            String url = documentService.getPreviewUrlByShareToken(shareToken, userId);
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build();
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Cannot open shared document: " + ex.getMessage());
+        }
+    }
+
+    @GetMapping("/shared/{shareToken}/preview-url")
+    public ResponseEntity<?> getPreviewUrlByShareToken(
+            @PathVariable String shareToken,
+            @RequestParam(value = "userId", required = false) Integer userId) {
+        try {
+            String url = documentService.getPreviewUrlByShareToken(shareToken, userId);
+            return ResponseEntity.ok(new PreviewUrlResponse(url));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Cannot create shared preview URL: " + ex.getMessage());
+        }
+    }
+
     @GetMapping("/{documentId}/content")
-    public ResponseEntity<?> streamDocumentContent(@PathVariable Long documentId) {
+    public ResponseEntity<?> streamDocumentContent(
+            @PathVariable Long documentId,
+            @RequestParam(value = "userId", required = false) Integer userId,
+            @RequestParam(value = "shareToken", required = false) String shareToken) {
         try {
             Document document = documentService.getDocumentById(documentId);
-            Resource resource = documentService.loadLocalDocumentResource(documentId);
+            Resource resource = documentService.loadLocalDocumentResource(documentId, userId, shareToken);
             String contentType = documentService.resolveContentType(documentId);
 
             ContentDisposition disposition = ContentDisposition.inline()

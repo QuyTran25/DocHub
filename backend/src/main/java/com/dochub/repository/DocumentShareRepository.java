@@ -13,5 +13,7 @@ public interface DocumentShareRepository extends JpaRepository<DocumentShare, Lo
 
     Optional<DocumentShare> findByDocumentIdAndSharedWithUserId(Long documentId, Integer sharedWithUserId);
 
+    boolean existsByDocumentIdAndSharedWithUserIdAndHiddenForRecipientFalse(Long documentId, Integer sharedWithUserId);
+
     void deleteByDocumentId(Long documentId);
 }
