@@ -228,35 +228,80 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const API_BASE = 'http://localhost:8080/api/auth';
 
   useEffect(() => {
     setIsLogin(initialMode !== 'register');
+    setError('');
+    setSuccessMsg('');
   }, [initialMode]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    
-    const account = mockAccounts.find(acc => acc.username === username && acc.password === password);
-    
-    if (account) {
-      onLogin(account);
-    } else {
-      setError('Tên đăng nhập hoặc mật khẩu không chính xác');
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        onLogin(data);
+      } else {
+        setError(data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (username.length < 3) {
-      setError('Tên đăng nhập phải ít nhất 3 ký tự');
+    setError('');
+    setSuccessMsg('');
+    if (username.trim().length < 3) {
+      setError('Tên đăng nhập phải có ít nhất 3 ký tự');
       return;
     }
-    // Giả lập đăng ký
-    alert('Tài khoản đã được tạo. Vui lòng đăng nhập!');
-    setIsLogin(true);
-    setUsername('');
-    setPassword('');
+    if (password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          email: email.trim(),
+          fullName: fullName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('✅ Tài khoản đã được tạo! Vui lòng đăng nhập.');
+        setIsLogin(true);
+        setUsername(username.trim());
+        setPassword('');
+        setEmail('');
+        setFullName('');
+      } else {
+        setError(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -295,6 +340,12 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
             </div>
           )}
 
+          {successMsg && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium">
+              {successMsg}
+            </div>
+          )}
+
           {isLogin ? (
             <form className="space-y-4" onSubmit={handleLogin}>
               <div>
@@ -304,7 +355,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-slate-50" 
-                  placeholder="akhoa hoặc qtran" 
+                  placeholder="Nhập tên đăng nhập" 
                   required 
                 />
               </div>
@@ -327,7 +378,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Thử: akhoa/2110 hoặc qtran/2506</p>
+
               </div>
               <div className="flex items-center justify-between mt-2 text-sm">
                 <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
@@ -338,9 +389,10 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
               </div>
               <button 
                 type="submit" 
-                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Đăng nhập
+                {loading ? '⏳ Đang xử lý...' : 'Đăng nhập'}
               </button>
             </form>
           ) : (
@@ -404,9 +456,10 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
               </label>
               <button 
                 type="submit" 
-                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Đăng ký
+                {loading ? '⏳ Đang tạo tài khoản...' : 'Đăng ký'}
               </button>
             </form>
           )}
@@ -890,8 +943,19 @@ const ShareModal = ({ isOpen, onClose, file }) => {
 
 // 6. Main Application
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  // Khởi tạo state từ localStorage để giữ session khi reload trang
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dochub_user');
+      return saved ? true : false;
+    } catch { return false; }
+  });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dochub_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [authMode, setAuthMode] = useState(null);
   const [activeTab, setActiveTab] = useState('my-docs');
   const [viewMode, setViewMode] = useState('grid');
@@ -913,8 +977,11 @@ export default function App() {
   const [files, setFiles] = useState([]);
 
   const handleLogin = (account) => {
+    // Lưu thông tin user vào localStorage để giữ session
+    try { localStorage.setItem('dochub_user', JSON.stringify(account)); } catch {}
     setCurrentUser(account);
     setIsAuthenticated(true);
+    setAuthMode(null);
     setActiveTab('my-docs');
   };
 
@@ -922,11 +989,21 @@ export default function App() {
     setLogoutConfirm(true);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
+    // Gọi API logout (stateless - chỉ thông báo server)
+    try {
+      await fetch('http://localhost:8080/api/auth/logout', { method: 'POST' });
+    } catch {}
+    // Xóa session khỏi localStorage
+    try { localStorage.removeItem('dochub_user'); } catch {}
     setIsAuthenticated(false);
     setCurrentUser(null);
+    setFiles([]);
+    setSharedFiles([]);
+    setTrashFiles([]);
     setActiveTab('my-docs');
     setLogoutConfirm(false);
+    setShowUserDropdown(false);
   };
 
   const handleDeleteFile = (file) => {
