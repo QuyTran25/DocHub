@@ -38,7 +38,7 @@ public class Document {
     private Long fileSize;
 
     @Column(name = "owner_id")
-    private Integer ownerId;
+    private Long ownerId;
 
     @Column(name = "is_public")
     private Boolean isPublic;
@@ -63,6 +63,9 @@ public class Document {
 
     @Column(name = "share_enabled", nullable = false)
     private Boolean shareEnabled = false;
+
+    @Column(name = "share_expires_at")
+    private LocalDateTime shareExpiresAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -116,11 +119,11 @@ public class Document {
         this.fileSize = fileSize;
     }
 
-    public Integer getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Integer ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
@@ -186,6 +189,14 @@ public class Document {
 
     public void setShareEnabled(Boolean shareEnabled) {
         this.shareEnabled = shareEnabled;
+    }
+
+    public LocalDateTime getShareExpiresAt() {
+        return shareExpiresAt;
+    }
+
+    public void setShareExpiresAt(LocalDateTime shareExpiresAt) {
+        this.shareExpiresAt = shareExpiresAt;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -26,13 +26,19 @@ public class DocumentShare {
     private Long documentId;
 
     @Column(name = "owner_id", nullable = false)
-    private Integer ownerId;
+    private Long ownerId;
 
     @Column(name = "shared_with_user_id", nullable = false)
-    private Integer sharedWithUserId;
+    private Long sharedWithUserId;
 
     @Column(name = "hidden_for_recipient", nullable = false)
     private Boolean hiddenForRecipient = false;
+
+    @Column(name = "shared_via_link", nullable = false)
+    private Boolean sharedViaLink = false;
+
+    @Column(name = "access_expires_at")
+    private LocalDateTime accessExpiresAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -54,19 +60,19 @@ public class DocumentShare {
         this.documentId = documentId;
     }
 
-    public Integer getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Integer ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
-    public Integer getSharedWithUserId() {
+    public Long getSharedWithUserId() {
         return sharedWithUserId;
     }
 
-    public void setSharedWithUserId(Integer sharedWithUserId) {
+    public void setSharedWithUserId(Long sharedWithUserId) {
         this.sharedWithUserId = sharedWithUserId;
     }
 
@@ -76,6 +82,22 @@ public class DocumentShare {
 
     public void setHiddenForRecipient(Boolean hiddenForRecipient) {
         this.hiddenForRecipient = hiddenForRecipient;
+    }
+
+    public Boolean getSharedViaLink() {
+        return sharedViaLink;
+    }
+
+    public void setSharedViaLink(Boolean sharedViaLink) {
+        this.sharedViaLink = sharedViaLink;
+    }
+
+    public LocalDateTime getAccessExpiresAt() {
+        return accessExpiresAt;
+    }
+
+    public void setAccessExpiresAt(LocalDateTime accessExpiresAt) {
+        this.accessExpiresAt = accessExpiresAt;
     }
 
     public LocalDateTime getCreatedAt() {

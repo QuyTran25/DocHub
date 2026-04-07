@@ -34,6 +34,9 @@ public class DocumentService {
     @Value("${backend.public-base-url:http://localhost:8080}")
     private String backendPublicBaseUrl;
 
+    @Value("${documents.share.link-expiration-minutes:60}")
+    private int shareLinkExpirationMinutes;
+
     public DocumentService(
             DocumentRepository documentRepository,
             DocumentShareRepository documentShareRepository,
@@ -48,7 +51,7 @@ public class DocumentService {
             boolean isPublic,
             String topic,
             String hashtags,
-            Integer ownerId) throws IOException {
+            Long ownerId) throws IOException {
 
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File upload is required");
@@ -74,6 +77,7 @@ public class DocumentService {
         document.setOriginalPath(key);
         document.setShareEnabled(false);
         document.setShareToken(null);
+        document.setShareExpiresAt(null);
 
         return documentRepository.save(document);
     }
@@ -85,7 +89,7 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getTrashDocumentsByOwner(Integer ownerId) {
+    public List<Document> getTrashDocumentsByOwner(Long ownerId) {
         if (ownerId == null) {
             throw new IllegalArgumentException("ownerId is required");
         }
@@ -96,7 +100,7 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getSharedDocuments(Integer userId) {
+    public List<Document> getSharedDocuments(Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId is required");
         }
@@ -106,7 +110,13 @@ public class DocumentService {
             return List.of();
         }
 
-        Set<Long> documentIds = shares.stream().map(DocumentShare::getDocumentId).collect(Collectors.toSet());
+        Set<Long> documentIds = shares.stream()
+                .filter(this::isShareGrantActive)
+                .map(DocumentShare::getDocumentId)
+                .collect(Collectors.toSet());
+        if (documentIds.isEmpty()) {
+            return List.of();
+        }
         return documentRepository.findAllById(documentIds)
                 .stream()
                 .filter(doc -> Document.STATUS_ACTIVE == safeStatus(doc))
@@ -130,7 +140,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document softDeleteDocument(Long documentId, Integer ownerId) {
+    public Document softDeleteDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH == safeStatus(document)) {
             return document;
@@ -141,11 +151,12 @@ public class DocumentService {
         document.setIsPublic(false);
         document.setShareEnabled(false);
         document.setShareToken(null);
+        document.setShareExpiresAt(null);
         return documentRepository.save(document);
     }
 
     @Transactional
-    public Document restoreDocument(Long documentId, Integer ownerId) {
+    public Document restoreDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_ACTIVE == safeStatus(document)) {
             return document;
@@ -155,22 +166,41 @@ public class DocumentService {
         document.setDeletedAt(null);
         document.setShareEnabled(false);
         document.setShareToken(null);
+        document.setShareExpiresAt(null);
         return documentRepository.save(document);
     }
 
     @Transactional
-    public Document updateVisibility(Long documentId, Integer ownerId, boolean isPublic) {
+    public Document updateVisibility(Long documentId, Long ownerId, boolean isPublic) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH == safeStatus(document)) {
             throw new IllegalArgumentException("Cannot update permission for document in trash");
         }
 
+        boolean wasPublic = Boolean.TRUE.equals(document.getIsPublic());
         document.setIsPublic(isPublic);
+
+        if (wasPublic && !isPublic) {
+            // Moving to private mode must immediately invalidate all active link access.
+            document.setShareEnabled(false);
+            document.setShareToken(null);
+            document.setShareExpiresAt(null);
+
+            List<DocumentShare> shares = documentShareRepository.findByDocumentId(documentId);
+            for (DocumentShare share : shares) {
+                if (Boolean.TRUE.equals(share.getSharedViaLink())) {
+                    share.setHiddenForRecipient(true);
+                    share.setAccessExpiresAt(null);
+                    documentShareRepository.save(share);
+                }
+            }
+        }
+
         return documentRepository.save(document);
     }
 
     @Transactional
-    public String createShareLink(Long documentId, Integer ownerId) {
+    public String createShareLink(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH == safeStatus(document)) {
             throw new IllegalArgumentException("Cannot create share link for document in trash");
@@ -179,21 +209,23 @@ public class DocumentService {
         String token = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
         document.setShareToken(token);
         document.setShareEnabled(true);
+        document.setShareExpiresAt(LocalDateTime.now().plusMinutes(Math.max(1, shareLinkExpirationMinutes)));
         documentRepository.save(document);
 
         return normalizeBaseUrl(backendPublicBaseUrl) + "/api/documents/shared/" + token + "/open";
     }
 
     @Transactional
-    public void revokeShareLink(Long documentId, Integer ownerId) {
+    public void revokeShareLink(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         document.setShareEnabled(false);
         document.setShareToken(null);
+        document.setShareExpiresAt(null);
         documentRepository.save(document);
     }
 
     @Transactional
-    public void permanentlyDeleteDocument(Long documentId, Integer ownerId) {
+    public void permanentlyDeleteDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH != safeStatus(document)) {
             throw new IllegalArgumentException("Document must be in trash before permanent deletion");
@@ -202,7 +234,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public void removeDocumentFromSharedView(Long documentId, Integer userId) {
+    public void removeDocumentFromSharedView(Long documentId, Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId is required");
         }
@@ -214,7 +246,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document shareDocumentWithUser(Long documentId, Integer ownerId, Integer sharedWithUserId) {
+    public Document shareDocumentWithUser(Long documentId, Long ownerId, Long sharedWithUserId) {
         if (sharedWithUserId == null) {
             throw new IllegalArgumentException("sharedWithUserId is required");
         }
@@ -235,6 +267,8 @@ public class DocumentService {
         share.setOwnerId(ownerId);
         share.setSharedWithUserId(sharedWithUserId);
         share.setHiddenForRecipient(false);
+        share.setSharedViaLink(false);
+        share.setAccessExpiresAt(null);
         documentShareRepository.save(share);
 
         return document;
@@ -271,7 +305,7 @@ public class DocumentService {
         return getPreviewUrl(documentId, null);
     }
 
-    public String getPreviewUrl(Long documentId, Integer userId) {
+    public String getPreviewUrl(Long documentId, Long userId) {
         Document document = getDocumentById(documentId);
         ensureUserCanAccessDocument(document, userId, null);
         if (s3Service.isS3StorageActive()) {
@@ -286,7 +320,7 @@ public class DocumentService {
         return normalizeBaseUrl(backendPublicBaseUrl) + "/api/documents/" + documentId + "/content" + userSuffix;
     }
 
-    public String getPreviewUrlByShareToken(String shareToken, Integer userId) {
+    public String getPreviewUrlByShareToken(String shareToken, Long userId) {
         if (shareToken == null || shareToken.isBlank()) {
             throw new IllegalArgumentException("Share token is required");
         }
@@ -322,7 +356,7 @@ public class DocumentService {
         return loadLocalDocumentResource(documentId, null, null);
     }
 
-    public Resource loadLocalDocumentResource(Long documentId, Integer userId, String shareToken) {
+    public Resource loadLocalDocumentResource(Long documentId, Long userId, String shareToken) {
         if (s3Service.isS3StorageActive()) {
             throw new IllegalStateException("Local resource endpoint is not available while S3 mode is enabled");
         }
@@ -400,7 +434,7 @@ public class DocumentService {
         return "unknown";
     }
 
-    private Document getOwnedDocument(Long documentId, Integer ownerId) {
+    private Document getOwnedDocument(Long documentId, Long ownerId) {
         if (ownerId == null) {
             throw new IllegalArgumentException("ownerId is required");
         }
@@ -418,7 +452,7 @@ public class DocumentService {
         documentRepository.delete(document);
     }
 
-    private void ensureUserCanAccessDocument(Document document, Integer userId, String shareToken) {
+    private void ensureUserCanAccessDocument(Document document, Long userId, String shareToken) {
         if (document == null) {
             throw new IllegalArgumentException("Document not found");
         }
@@ -430,16 +464,18 @@ public class DocumentService {
         }
         if (Boolean.TRUE.equals(document.getShareEnabled())
                 && document.getShareToken() != null
-                && document.getShareToken().equals(shareToken)) {
+                && document.getShareToken().equals(shareToken)
+                && isShareTokenActive(document)) {
             return;
         }
         if (userId != null) {
             if (userId.equals(document.getOwnerId())) {
                 return;
             }
-            boolean hasDirectShare = documentShareRepository
-                    .existsByDocumentIdAndSharedWithUserIdAndHiddenForRecipientFalse(document.getId(), userId);
-            if (hasDirectShare) {
+            DocumentShare share = documentShareRepository
+                    .findByDocumentIdAndSharedWithUserId(document.getId(), userId)
+                    .orElse(null);
+            if (isShareGrantActive(share)) {
                 return;
             }
         }
@@ -447,7 +483,7 @@ public class DocumentService {
         throw new IllegalArgumentException("You do not have permission to access this document");
     }
 
-    private void ensureRecipientHasSharedRecord(Document document, Integer userId) {
+    private void ensureRecipientHasSharedRecord(Document document, Long userId) {
         if (document == null || userId == null) {
             return;
         }
@@ -463,7 +499,32 @@ public class DocumentService {
         share.setOwnerId(document.getOwnerId());
         share.setSharedWithUserId(userId);
         share.setHiddenForRecipient(false);
+        share.setSharedViaLink(true);
+        share.setAccessExpiresAt(document.getShareExpiresAt());
         documentShareRepository.save(share);
+    }
+
+    private boolean isShareTokenActive(Document document) {
+        if (!Boolean.TRUE.equals(document.getShareEnabled())) {
+            return false;
+        }
+        LocalDateTime expiresAt = document.getShareExpiresAt();
+        if (expiresAt == null) {
+            return false;
+        }
+        return LocalDateTime.now().isBefore(expiresAt);
+    }
+
+    private boolean isShareGrantActive(DocumentShare share) {
+        if (share == null || Boolean.TRUE.equals(share.getHiddenForRecipient())) {
+            return false;
+        }
+        if (!Boolean.TRUE.equals(share.getSharedViaLink())) {
+            return true;
+        }
+
+        LocalDateTime expiresAt = share.getAccessExpiresAt();
+        return expiresAt != null && LocalDateTime.now().isBefore(expiresAt);
     }
 
     private int safeStatus(Document document) {

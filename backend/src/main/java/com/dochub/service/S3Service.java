@@ -35,6 +35,9 @@ public class S3Service {
 	@Value("${storage.local.upload-dir:uploads}")
 	private String localUploadDir;
 
+	@Value("${aws.s3.preview-url-expiration-minutes:60}")
+	private int previewUrlExpirationMinutes;
+
 	public boolean isS3StorageActive() {
 		return s3Enabled && !bucketName.isBlank();
 	}
@@ -75,7 +78,7 @@ public class S3Service {
 				.build();
 
 		GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-				.signatureDuration(Duration.ofMinutes(30))
+				.signatureDuration(Duration.ofMinutes(Math.max(1, previewUrlExpirationMinutes)))
 				.getObjectRequest(getObjectRequest)
 				.build();
 

@@ -229,35 +229,80 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const API_BASE = 'http://localhost:8080/api/auth';
 
   useEffect(() => {
     setIsLogin(initialMode !== 'register');
+    setError('');
+    setSuccessMsg('');
   }, [initialMode]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    
-    const account = mockAccounts.find(acc => acc.username === username && acc.password === password);
-    
-    if (account) {
-      onLogin(account);
-    } else {
-      setError('Tên đăng nhập hoặc mật khẩu không chính xác');
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        onLogin(data);
+      } else {
+        setError(data.message || 'Tên đăng nhập hoặc mật khẩu không chính xác');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
-    if (username.length < 3) {
-      setError('Tên đăng nhập phải ít nhất 3 ký tự');
+    setError('');
+    setSuccessMsg('');
+    if (username.trim().length < 3) {
+      setError('Tên đăng nhập phải có ít nhất 3 ký tự');
       return;
     }
-    // Giả lập đăng ký
-    alert('Tài khoản đã được tạo. Vui lòng đăng nhập!');
-    setIsLogin(true);
-    setUsername('');
-    setPassword('');
+    if (password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          email: email.trim(),
+          fullName: fullName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSuccessMsg('✅ Tài khoản đã được tạo! Vui lòng đăng nhập.');
+        setIsLogin(true);
+        setUsername(username.trim());
+        setPassword('');
+        setEmail('');
+        setFullName('');
+      } else {
+        setError(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      }
+    } catch {
+      setError('Không thể kết nối đến máy chủ. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -296,6 +341,12 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
             </div>
           )}
 
+          {successMsg && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm font-medium">
+              {successMsg}
+            </div>
+          )}
+
           {isLogin ? (
             <form className="space-y-4" onSubmit={handleLogin}>
               <div>
@@ -305,7 +356,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-slate-50" 
-                  placeholder="akhoa hoặc qtran" 
+                  placeholder="Nhập tên đăng nhập" 
                   required 
                 />
               </div>
@@ -328,7 +379,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Thử: akhoa/2110 hoặc qtran/2506</p>
+
               </div>
               <div className="flex items-center justify-between mt-2 text-sm">
                 <label className="flex items-center gap-2 text-slate-600 cursor-pointer">
@@ -339,9 +390,10 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
               </div>
               <button 
                 type="submit" 
-                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Đăng nhập
+                {loading ? '⏳ Đang xử lý...' : 'Đăng nhập'}
               </button>
             </form>
           ) : (
@@ -405,9 +457,10 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
               </label>
               <button 
                 type="submit" 
-                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90"
+                disabled={loading}
+                className="mt-6 w-full rounded-lg bg-[#23A0E3] py-2.5 font-semibold text-white transition-all duration-200 hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Đăng ký
+                {loading ? '⏳ Đang tạo tài khoản...' : 'Đăng ký'}
               </button>
             </form>
           )}
@@ -758,13 +811,14 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const isPublicFile = file?.status === 'public';
 
   useEffect(() => {
     if (!file) {
       return;
     }
     setAccess(file.status === 'public' ? 'public' : 'private');
-    setShareLink('');
+    setShareLink(file.status === 'public' ? `${window.location.origin}/?documentId=${file.id}` : '');
     setLinkCreated(false);
     setCopied(false);
     setError('');
@@ -880,6 +934,29 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
           </div>
 
           {!linkCreated ? (
+            isPublicFile ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700">Liên kết chia sẻ công khai:</label>
+                  <div className="flex items-center gap-2 bg-slate-100 p-3 rounded-lg border border-slate-300">
+                    <input
+                      type="text"
+                      value={shareLink}
+                      readOnly
+                      className="flex-1 bg-transparent text-sm text-slate-700 focus:outline-none"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="px-3 py-1.5 text-xs font-semibold text-white rounded-md hover:opacity-90"
+                      style={{ background: '#120368' }}
+                    >
+                      {copied ? 'Đã copy' : 'Copy'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">{copied ? '✓ Đã sao chép vào clipboard!' : 'Nhấn Copy để sao chép liên kết'}</p>
+                </div>
+              </div>
+            ) : (
             <div className="space-y-3">
               <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-slate-50 transition-colors border-slate-200">
                 <input type="radio" name="access" checked={access === 'public'} onChange={() => setAccess('public')} className="mt-1 text-blue-600 focus:ring-blue-500" />
@@ -902,6 +979,7 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
                 </div>
               </label>
             </div>
+            )
           ) : (
             <div className="space-y-4">
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
@@ -943,12 +1021,14 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
           <button onClick={handleModalClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Hủy</button>
           {!linkCreated && (
             <button 
-              onClick={access === 'public' ? handlePublicConfirm : generateShareLink}
+              onClick={isPublicFile ? handleModalClose : (access === 'public' ? handlePublicConfirm : generateShareLink)}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90 flex items-center gap-2 transition-all disabled:opacity-60"
               style={{ background: '#120368' }}
             >
-              {access === 'public' ? (
+              {isPublicFile ? (
+                <>✓ Xong</>
+              ) : access === 'public' ? (
                 <>{isLoading ? 'Đang cập nhật...' : '🌐 Xác nhận Công khai'}</>
               ) : (
                 <>{isLoading ? 'Đang tạo link...' : <><LinkIcon size={16} /> Tạo Link Shared</>}</>
@@ -974,9 +1054,22 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
 
 // 6. Main Application
 export default function App() {
-  const initialShareToken = new URLSearchParams(window.location.search).get('shareToken');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const initialQueryParams = new URLSearchParams(window.location.search);
+  const initialShareToken = initialQueryParams.get('shareToken');
+  const initialPublicDocumentId = initialQueryParams.get('documentId');
+  // Khởi tạo state từ localStorage để giữ session khi reload trang
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dochub_user');
+      return saved ? true : false;
+    } catch { return false; }
+  });
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dochub_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [authMode, setAuthMode] = useState(null);
   const [activeTab, setActiveTab] = useState('my-docs');
   const [viewMode, setViewMode] = useState('grid');
@@ -997,10 +1090,16 @@ export default function App() {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [files, setFiles] = useState([]);
   const [pendingShareToken, setPendingShareToken] = useState(initialShareToken || null);
+  const [pendingPublicDocumentId, setPendingPublicDocumentId] = useState(initialPublicDocumentId || null);
+  const [publicShareDialog, setPublicShareDialog] = useState(null);
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
 
   const handleLogin = (account) => {
+    // Lưu thông tin user vào localStorage để giữ session
+    try { localStorage.setItem('dochub_user', JSON.stringify(account)); } catch {}
     setCurrentUser(account);
     setIsAuthenticated(true);
+    setAuthMode(null);
     setActiveTab('my-docs');
   };
 
@@ -1008,11 +1107,21 @@ export default function App() {
     setLogoutConfirm(true);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
+    // Gọi API logout (stateless - chỉ thông báo server)
+    try {
+      await fetch('http://localhost:8080/api/auth/logout', { method: 'POST' });
+    } catch {}
+    // Xóa session khỏi localStorage
+    try { localStorage.removeItem('dochub_user'); } catch {}
     setIsAuthenticated(false);
     setCurrentUser(null);
+    setFiles([]);
+    setSharedFiles([]);
+    setTrashFiles([]);
     setActiveTab('my-docs');
     setLogoutConfirm(false);
+    setShowUserDropdown(false);
   };
 
   const handleDeleteFile = (file) => {
@@ -1128,7 +1237,7 @@ export default function App() {
       const docs = await response.json();
       setFiles(Array.isArray(docs) ? docs.map(mapDocToDisplayFile) : []);
     } catch {
-      setFiles(mockFiles);
+      setFiles([]);
     }
   };
 
@@ -1166,7 +1275,7 @@ export default function App() {
       })) : [];
       setSharedFiles(mapped);
     } catch {
-      setSharedFiles(mockSharedFiles);
+      setSharedFiles([]);
     }
   };
 
@@ -1193,6 +1302,39 @@ export default function App() {
       const normalizedMessage = (error?.message || '')
         .replace('Bai viet goc da bi xoa, vui long doi khoi phuc', 'Bài viết gốc đã bị xóa, vui lòng đợi khôi phục');
       alert(`Mở file thất bại: ${normalizedMessage || 'Không thể mở tài liệu'}`);
+    }
+  };
+
+  const handleShareClick = async (file) => {
+    if (!file?.id) {
+      alert('Không thể chia sẻ file này vì thiếu mã định danh (id).');
+      return;
+    }
+
+    if (file.status !== 'public') {
+      setShareFile(file);
+      return;
+    }
+
+    const publicLink = `${window.location.origin}/?documentId=${file.id}`;
+    setPublicShareDialog({
+      fileName: file.name,
+      url: publicLink,
+    });
+    setPublicLinkCopied(false);
+  };
+
+  const handleCopyPublicShareLink = async () => {
+    if (!publicShareDialog?.url) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(publicShareDialog.url);
+      setPublicLinkCopied(true);
+      setTimeout(() => setPublicLinkCopied(false), 2000);
+    } catch {
+      window.prompt('Sao chép link tài liệu công khai:', publicShareDialog.url);
     }
   };
 
@@ -1296,11 +1438,14 @@ export default function App() {
   }, [isAuthenticated, currentUser]);
 
   useEffect(() => {
-    if (!pendingShareToken || isAuthenticated) {
+    if (isAuthenticated) {
+      return;
+    }
+    if (!pendingShareToken && !pendingPublicDocumentId) {
       return;
     }
     setAuthMode('login');
-  }, [pendingShareToken, isAuthenticated]);
+  }, [pendingShareToken, pendingPublicDocumentId, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser?.id || !pendingShareToken) {
@@ -1313,13 +1458,14 @@ export default function App() {
       try {
         const previewUrl = await resolveShareTokenToPreviewUrl(pendingShareToken, currentUser.id);
         if (!cancelled) {
-          window.open(previewUrl, '_blank', 'noopener,noreferrer');
-          await reloadSharedDocuments();
           setPendingShareToken(null);
           const params = new URLSearchParams(window.location.search);
           params.delete('shareToken');
+          params.delete('documentId');
           const nextQuery = params.toString();
           window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+          await reloadSharedDocuments();
+          window.location.assign(previewUrl);
         }
       } catch (error) {
         if (!cancelled) {
@@ -1334,6 +1480,49 @@ export default function App() {
       cancelled = true;
     };
   }, [isAuthenticated, currentUser, pendingShareToken]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.id || !pendingPublicDocumentId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const openPublicDocumentFromLink = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/documents/${pendingPublicDocumentId}/preview-url?userId=${currentUser.id}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Không thể mở link tài liệu công khai');
+        }
+
+        const body = await response.json();
+        if (!body?.url) {
+          throw new Error('Link tài liệu công khai không hợp lệ');
+        }
+
+        if (!cancelled) {
+          setPendingPublicDocumentId(null);
+          const params = new URLSearchParams(window.location.search);
+          params.delete('documentId');
+          params.delete('shareToken');
+          const nextQuery = params.toString();
+          window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
+          window.location.assign(body.url);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          alert(`Không thể mở link chia sẻ: ${error.message || 'Link không hợp lệ'}`);
+        }
+      }
+    };
+
+    openPublicDocumentFromLink();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, currentUser, pendingPublicDocumentId]);
 
   if (!isAuthenticated) {
     if (authMode) {
@@ -1700,7 +1889,7 @@ export default function App() {
                               <Folder size={12} /> Khôi phục
                             </button>
                           ) : (
-                            <button onClick={() => setShareFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                            <button onClick={() => handleShareClick(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                               <LinkIcon size={12} /> Chia sẻ
                             </button>
                           )}
@@ -1770,7 +1959,7 @@ export default function App() {
                                   ) : activeTab === 'trash' ? (
                                     <button onClick={() => restoreFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Khôi phục"><Folder size={18} /></button>
                                   ) : (
-                                    <button onClick={() => setShareFile(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Chia sẻ"><LinkIcon size={18} /></button>
+                                    <button onClick={() => handleShareClick(file)} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="Chia sẻ"><LinkIcon size={18} /></button>
                                   )}
                                   {activeTab === 'my-docs' && (
                                     <>
@@ -1816,6 +2005,57 @@ export default function App() {
           await Promise.all([reloadDocuments(), reloadSharedDocuments()]);
         }}
       />
+
+      {publicShareDialog && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-semibold text-lg text-slate-800 flex items-center gap-2">
+                <LinkIcon size={18} className="text-blue-600" /> Link chia sẻ công khai
+              </h3>
+              <button
+                onClick={() => setPublicShareDialog(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600">
+                Tài liệu: <span className="font-semibold text-slate-800">{publicShareDialog.fileName}</span>
+              </p>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Liên kết chia sẻ:</label>
+                <div className="flex items-center gap-2 bg-slate-100 p-3 rounded-lg border border-slate-300">
+                  <input
+                    type="text"
+                    value={publicShareDialog.url}
+                    readOnly
+                    className="flex-1 bg-transparent text-sm text-slate-700 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleCopyPublicShareLink}
+                    className="px-3 py-1.5 text-xs font-semibold text-white rounded-md hover:opacity-90"
+                    style={{ background: '#120368' }}
+                  >
+                    {publicLinkCopied ? 'Đã copy' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+              <button
+                onClick={() => setPublicShareDialog(null)}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Logout Confirmation Modal */}
       {logoutConfirm && (
@@ -1986,7 +2226,8 @@ export default function App() {
               </button>
               <button 
                 onClick={handlePermissionUpdate}
-                className="px-4 py-2 text-sm font-medium text-white bg-\[#120368\] rounded-lg hover:bg-teal-700"
+                className="px-4 py-2 text-sm font-medium text-white rounded-lg hover:opacity-90"
+                style={{ background: '#120368' }}
               >
                 Cập nhật
               </button>

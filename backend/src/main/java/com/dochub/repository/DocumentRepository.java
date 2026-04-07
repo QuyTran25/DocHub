@@ -12,7 +12,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
 
 	List<Document> findByStatus(Integer status);
 
-	List<Document> findByOwnerIdAndStatus(Integer ownerId, Integer status);
+	List<Document> findByOwnerIdAndStatus(Long ownerId, Integer status);
 
 	List<Document> findByStatusAndDeletedAtBefore(Integer status, LocalDateTime cutoffTime);
 
