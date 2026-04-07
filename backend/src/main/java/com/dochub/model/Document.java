@@ -38,7 +38,7 @@ public class Document {
     private Long fileSize;
 
     @Column(name = "owner_id")
-    private Integer ownerId;
+    private Long ownerId;
 
     @Column(name = "is_public")
     private Boolean isPublic;
@@ -48,6 +48,9 @@ public class Document {
 
     @Column(name = "hashtags")
     private String hashtags;
+
+    @Column(name = "share_enabled", nullable = false)
+    private Boolean shareEnabled = false;
 
     @Column(name = "status", nullable = false)
     private Integer status = STATUS_ACTIVE;
@@ -110,11 +113,11 @@ public class Document {
         this.fileSize = fileSize;
     }
 
-    public Integer getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Integer ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
@@ -140,6 +143,14 @@ public class Document {
 
     public void setHashtags(String hashtags) {
         this.hashtags = hashtags;
+    }
+
+    public Boolean getShareEnabled() {
+        return shareEnabled;
+    }
+
+    public void setShareEnabled(Boolean shareEnabled) {
+        this.shareEnabled = shareEnabled;
     }
 
     public Integer getStatus() {

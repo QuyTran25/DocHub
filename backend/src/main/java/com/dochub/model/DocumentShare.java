@@ -26,10 +26,10 @@ public class DocumentShare {
     private Long documentId;
 
     @Column(name = "owner_id", nullable = false)
-    private Integer ownerId;
+    private Long ownerId;
 
     @Column(name = "shared_with_user_id", nullable = false)
-    private Integer sharedWithUserId;
+    private Long sharedWithUserId;
 
     @Column(name = "hidden_for_recipient", nullable = false)
     private Boolean hiddenForRecipient = false;
@@ -54,19 +54,19 @@ public class DocumentShare {
         this.documentId = documentId;
     }
 
-    public Integer getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Integer ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 
-    public Integer getSharedWithUserId() {
+    public Long getSharedWithUserId() {
         return sharedWithUserId;
     }
 
-    public void setSharedWithUserId(Integer sharedWithUserId) {
+    public void setSharedWithUserId(Long sharedWithUserId) {
         this.sharedWithUserId = sharedWithUserId;
     }
 

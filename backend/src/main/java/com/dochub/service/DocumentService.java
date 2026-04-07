@@ -47,7 +47,7 @@ public class DocumentService {
             boolean isPublic,
             String topic,
             String hashtags,
-            Integer ownerId) throws IOException {
+            Long ownerId) throws IOException {
 
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File upload is required");
@@ -68,6 +68,7 @@ public class DocumentService {
         document.setIsPublic(isPublic);
         document.setTopic(topic);
         document.setHashtags(hashtags);
+        document.setShareEnabled(false);
         document.setStatus(Document.STATUS_ACTIVE);
         document.setDeletedAt(null);
         document.setOriginalPath(key);
@@ -82,7 +83,7 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getTrashDocumentsByOwner(Integer ownerId) {
+    public List<Document> getTrashDocumentsByOwner(Long ownerId) {
         if (ownerId == null) {
             throw new IllegalArgumentException("ownerId is required");
         }
@@ -93,7 +94,7 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getSharedDocuments(Integer userId) {
+    public List<Document> getSharedDocuments(Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId is required");
         }
@@ -127,7 +128,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document softDeleteDocument(Long documentId, Integer ownerId) {
+    public Document softDeleteDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH == safeStatus(document)) {
             return document;
@@ -140,7 +141,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document restoreDocument(Long documentId, Integer ownerId) {
+    public Document restoreDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_ACTIVE == safeStatus(document)) {
             return document;
@@ -152,7 +153,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public void permanentlyDeleteDocument(Long documentId, Integer ownerId) {
+    public void permanentlyDeleteDocument(Long documentId, Long ownerId) {
         Document document = getOwnedDocument(documentId, ownerId);
         if (Document.STATUS_TRASH != safeStatus(document)) {
             throw new IllegalArgumentException("Document must be in trash before permanent deletion");
@@ -161,7 +162,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public void removeDocumentFromSharedView(Long documentId, Integer userId) {
+    public void removeDocumentFromSharedView(Long documentId, Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("userId is required");
         }
@@ -173,7 +174,7 @@ public class DocumentService {
     }
 
     @Transactional
-    public Document shareDocumentWithUser(Long documentId, Integer ownerId, Integer sharedWithUserId) {
+    public Document shareDocumentWithUser(Long documentId, Long ownerId, Long sharedWithUserId) {
         if (sharedWithUserId == null) {
             throw new IllegalArgumentException("sharedWithUserId is required");
         }
@@ -316,7 +317,7 @@ public class DocumentService {
         return "unknown";
     }
 
-    private Document getOwnedDocument(Long documentId, Integer ownerId) {
+    private Document getOwnedDocument(Long documentId, Long ownerId) {
         if (ownerId == null) {
             throw new IllegalArgumentException("ownerId is required");
         }

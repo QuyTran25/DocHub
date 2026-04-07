@@ -23,16 +23,17 @@ DROP TABLE IF EXISTS `documents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `documents` (
-  `id` int NOT NULL AUTO_INCREMENT,
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `file_name` varchar(255) NOT NULL,
   `s3_key` varchar(255) NOT NULL,
   `file_path` varchar(255) NOT NULL,
   `file_type` varchar(50) DEFAULT NULL,
   `file_size` bigint DEFAULT NULL,
-  `owner_id` int DEFAULT NULL,
+  `owner_id` bigint DEFAULT NULL,
   `is_public` tinyint(1) DEFAULT '0',
   `topic` varchar(255) DEFAULT NULL,
   `hashtags` varchar(255) DEFAULT NULL,
+  `share_enabled` tinyint(1) NOT NULL DEFAULT '0',
   `status` int NOT NULL DEFAULT '0',
   `deleted_at` datetime DEFAULT NULL,
   `original_path` varchar(255) DEFAULT NULL,
@@ -49,7 +50,7 @@ CREATE TABLE `documents` (
 
 LOCK TABLES `documents` WRITE;
 /*!40000 ALTER TABLE `documents` DISABLE KEYS */;
-INSERT INTO `documents` VALUES (1,'slide.pdf','uploads/slide.pdf','uploads/slide.pdf','pdf',2048000,1,1,'Cloud Computing','#Cloud',0,NULL,'uploads/slide.pdf','2026-03-24 13:02:35');
+INSERT INTO `documents` VALUES (1,'slide.pdf','uploads/slide.pdf','uploads/slide.pdf','pdf',2048000,1,1,'Cloud Computing','#Cloud',0,0,NULL,'uploads/slide.pdf','2026-03-24 13:02:35');
 /*!40000 ALTER TABLE `documents` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -62,9 +63,9 @@ DROP TABLE IF EXISTS `document_shares`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `document_shares` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `document_id` int NOT NULL,
-  `owner_id` int NOT NULL,
-  `shared_with_user_id` int NOT NULL,
+  `document_id` bigint NOT NULL,
+  `owner_id` bigint NOT NULL,
+  `shared_with_user_id` bigint NOT NULL,
   `hidden_for_recipient` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -91,13 +92,17 @@ DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `username` varchar(100) NOT NULL,
-  `email` varchar(150) DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL UNIQUE,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(100) NOT NULL UNIQUE,
+  `full_name` varchar(100),
+  `role` varchar(20) DEFAULT 'user',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  UNIQUE KEY `uk_username` (`username`),
+  UNIQUE KEY `uk_email` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -106,7 +111,8 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'sang','sang@gmail.com','2026-03-24 13:02:28');
+INSERT INTO `users` VALUES (1,'akhoa','$2a$10$slYQmyNdGzin7olVN3p5HOpsvK9x.M0bFh5FQVODBjB5aO2p/QPSO','akhoa@university.edu','Ạ Khoa','user','2026-03-24 13:02:28');
+INSERT INTO `users` VALUES (2,'qtran','$2a$10$slYQmyNdGzin7olVN3p5HOpsvK9x.M0bFh5FQVODBjB5aO2p/QPSO','qtran@university.edu','Q Trân','user','2026-03-24 13:02:28');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

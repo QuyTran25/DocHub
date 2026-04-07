@@ -58,8 +58,10 @@ public class AuthService {
             return new AuthResponse("Vui lòng nhập đầy đủ thông tin");
         }
 
+        String username = request.getUsername().trim();
+
         // Tìm user theo username
-        return userRepository.findByUsername(request.getUsername().trim())
+        return userRepository.findByUsername(username)
             .map(user -> {
                 if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
                     return new AuthResponse(user.getId(), user.getUsername(), user.getEmail(), user.getFullName(), user.getRole());
@@ -68,5 +70,6 @@ public class AuthService {
                 }
             })
             .orElse(new AuthResponse("Tên đăng nhập hoặc mật khẩu không chính xác"));
+    }
     }
 }

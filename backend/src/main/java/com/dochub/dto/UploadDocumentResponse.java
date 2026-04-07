@@ -9,7 +9,7 @@ public class UploadDocumentResponse {
     private String fileName;
     private String fileType;
     private Long fileSize;
-    private Integer ownerId;
+    private Long ownerId;
     private Boolean isPublic;
     private String topic;
     private String hashtags;
@@ -67,11 +67,11 @@ public class UploadDocumentResponse {
         this.fileSize = fileSize;
     }
 
-    public Integer getOwnerId() {
+    public Long getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(Integer ownerId) {
+    public void setOwnerId(Long ownerId) {
         this.ownerId = ownerId;
     }
 

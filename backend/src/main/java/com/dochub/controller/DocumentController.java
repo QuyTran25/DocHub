@@ -42,7 +42,7 @@ public class DocumentController {
             @RequestParam(value = "isPublic", defaultValue = "false") boolean isPublic,
             @RequestParam(value = "topic", required = false) String topic,
             @RequestParam(value = "hashtags", required = false) String hashtags,
-            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+            @RequestParam(value = "ownerId", required = false) Long ownerId) {
 
         try {
             Document savedDocument = documentService.uploadDocument(file, isPublic, topic, hashtags, ownerId);
@@ -65,7 +65,7 @@ public class DocumentController {
     }
 
     @GetMapping("/trash")
-    public ResponseEntity<?> listTrashDocuments(@RequestParam(value = "ownerId", required = false) Integer ownerId) {
+    public ResponseEntity<?> listTrashDocuments(@RequestParam(value = "ownerId", required = false) Long ownerId) {
         try {
             List<UploadDocumentResponse> response = documentService.getTrashDocumentsByOwner(ownerId)
                     .stream()
@@ -78,7 +78,7 @@ public class DocumentController {
     }
 
     @GetMapping("/shared")
-    public ResponseEntity<?> listSharedDocuments(@RequestParam(value = "userId", required = false) Integer userId) {
+    public ResponseEntity<?> listSharedDocuments(@RequestParam(value = "userId", required = false) Long userId) {
         try {
             List<UploadDocumentResponse> response = documentService.getSharedDocuments(userId)
                     .stream()
@@ -93,7 +93,7 @@ public class DocumentController {
     @PatchMapping("/{documentId}/trash")
     public ResponseEntity<?> moveToTrash(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+            @RequestParam(value = "ownerId", required = false) Long ownerId) {
         try {
             Document document = documentService.softDeleteDocument(documentId, ownerId);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
@@ -105,7 +105,7 @@ public class DocumentController {
     @PatchMapping("/{documentId}/restore")
     public ResponseEntity<?> restoreDocument(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+            @RequestParam(value = "ownerId", required = false) Long ownerId) {
         try {
             Document document = documentService.restoreDocument(documentId, ownerId);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
@@ -117,7 +117,7 @@ public class DocumentController {
     @DeleteMapping("/{documentId}/permanent")
     public ResponseEntity<?> permanentlyDeleteDocument(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Integer ownerId) {
+            @RequestParam(value = "ownerId", required = false) Long ownerId) {
         try {
             documentService.permanentlyDeleteDocument(documentId, ownerId);
             return ResponseEntity.ok("Document deleted permanently");
@@ -132,7 +132,7 @@ public class DocumentController {
     @DeleteMapping("/{documentId}/shared-view")
     public ResponseEntity<?> removeFromSharedView(
             @PathVariable Long documentId,
-            @RequestParam(value = "userId", required = false) Integer userId) {
+            @RequestParam(value = "userId", required = false) Long userId) {
         try {
             documentService.removeDocumentFromSharedView(documentId, userId);
             return ResponseEntity.ok("Removed from shared view");
@@ -144,8 +144,8 @@ public class DocumentController {
     @PostMapping("/{documentId}/share")
     public ResponseEntity<?> shareWithUser(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Integer ownerId,
-            @RequestParam(value = "sharedWithUserId", required = false) Integer sharedWithUserId) {
+            @RequestParam(value = "ownerId", required = false) Long ownerId,
+            @RequestParam(value = "sharedWithUserId", required = false) Long sharedWithUserId) {
         try {
             Document document = documentService.shareDocumentWithUser(documentId, ownerId, sharedWithUserId);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));

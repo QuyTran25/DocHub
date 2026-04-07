@@ -1119,7 +1119,7 @@ export default function App() {
       const docs = await response.json();
       setFiles(Array.isArray(docs) ? docs.map(mapDocToDisplayFile) : []);
     } catch {
-      setFiles(mockFiles);
+      setFiles([]);
     }
   };
 
@@ -1157,7 +1157,7 @@ export default function App() {
       })) : [];
       setSharedFiles(mapped);
     } catch {
-      setSharedFiles(mockSharedFiles);
+      setSharedFiles([]);
     }
   };
 

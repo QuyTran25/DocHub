@@ -9,9 +9,9 @@ import com.dochub.model.DocumentShare;
 
 public interface DocumentShareRepository extends JpaRepository<DocumentShare, Long> {
 
-    List<DocumentShare> findBySharedWithUserIdAndHiddenForRecipientFalse(Integer sharedWithUserId);
+    List<DocumentShare> findBySharedWithUserIdAndHiddenForRecipientFalse(Long sharedWithUserId);
 
-    Optional<DocumentShare> findByDocumentIdAndSharedWithUserId(Long documentId, Integer sharedWithUserId);
+    Optional<DocumentShare> findByDocumentIdAndSharedWithUserId(Long documentId, Long sharedWithUserId);
 
     void deleteByDocumentId(Long documentId);
 }
