@@ -1110,7 +1110,7 @@ export default function App() {
   const confirmLogout = async () => {
     // Gọi API logout (stateless - chỉ thông báo server)
     try {
-      await fetch('http://localhost:8080/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST' });
     } catch {}
     // Xóa session khỏi localStorage
     try { localStorage.removeItem('dochub_user'); } catch {}
@@ -1135,7 +1135,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/restore?ownerId=${currentUser.id}`, {
+      const response = await fetch(`/api/documents/${file.id}/restore?ownerId=${currentUser.id}`, {
         method: 'PATCH',
       });
 
@@ -1160,7 +1160,7 @@ export default function App() {
 
     try {
       if (action === 'shared-remove') {
-        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/shared-view?userId=${currentUser.id}`, {
+        const response = await fetch(`/api/documents/${file.id}/shared-view?userId=${currentUser.id}`, {
           method: 'DELETE',
         });
 
@@ -1171,7 +1171,7 @@ export default function App() {
 
         await reloadSharedDocuments();
       } else if (action === 'permanent') {
-        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/permanent?ownerId=${currentUser.id}`, {
+        const response = await fetch(`/api/documents/${file.id}/permanent?ownerId=${currentUser.id}`, {
           method: 'DELETE',
         });
 
@@ -1182,7 +1182,7 @@ export default function App() {
 
         await Promise.all([reloadDocuments(), reloadTrashDocuments()]);
       } else {
-        const response = await fetch(`http://localhost:8080/api/documents/${file.id}/trash?ownerId=${currentUser.id}`, {
+        const response = await fetch(`/api/documents/${file.id}/trash?ownerId=${currentUser.id}`, {
           method: 'PATCH',
         });
 
@@ -1230,7 +1230,7 @@ export default function App() {
 
   const reloadDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/documents');
+      const response = await fetch('/api/documents');
       if (!response.ok) {
         throw new Error('Cannot load documents');
       }
@@ -1247,7 +1247,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/documents/trash?ownerId=${currentUser.id}`);
+      const response = await fetch(`/api/documents/trash?ownerId=${currentUser.id}`);
       if (!response.ok) {
         throw new Error('Cannot load trash documents');
       }
@@ -1264,7 +1264,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/documents/shared?userId=${currentUser.id}`);
+      const response = await fetch(`/api/documents/shared?userId=${currentUser.id}`);
       if (!response.ok) {
         throw new Error('Cannot load shared documents');
       }
@@ -1286,7 +1286,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/preview-url?userId=${currentUser.id}`);
+      const response = await fetch(`/api/documents/${file.id}/preview-url`);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || 'Không lấy được link xem file.');
