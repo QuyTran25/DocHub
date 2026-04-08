@@ -232,7 +232,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
-  const API_BASE = 'http://localhost:8080/api/auth';
+  const API_BASE = '/api/auth';
 
   useEffect(() => {
     setIsLogin(initialMode !== 'register');
@@ -602,7 +602,7 @@ const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
         formData.append('ownerId', String(currentUser.id));
       }
 
-      const response = await fetch('http://localhost:8080/api/documents/upload', {
+      const response = await fetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
       });
