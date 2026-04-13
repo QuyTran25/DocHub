@@ -169,36 +169,6 @@ const LandingPage = ({ onGetStarted, onLoginClick }) => {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section className="mx-auto max-w-7xl px-6 py-16 sm:py-24">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-slate-900">Định giá đơn giản</h2>
-          <p className="mt-2 text-slate-600">Chọn gói phù hợp với nhu cầu của bạn</p>
-        </div>
-        <div className="grid gap-8 md:grid-cols-3">
-          {[
-            { name: 'Miễn phí', price: '$0', features: ['5GB dung lượng', 'Chia sẻ với 5 người', 'Hộ trợ cơ bản'] },
-            { name: 'Pro', price: '$9.99', popular: true, features: ['100GB dung lượng', 'Chia sẻ không giới hạn', 'Hộ trợ ưu tiên', 'Truy cập'] },
-            { name: 'Enterprise', price: 'Liên hệ', features: ['Dung lượng không giới hạn', 'Hộ trợ 24/7', 'Tính năng tùy chỉnh'] },
-          ].map((plan, i) => (
-            <div key={i} className={`rounded-2xl border-2 p-8 ${plan.popular ? 'border-blue-600 bg-gradient-to-b from-blue-50 to-white' : 'border-slate-200 bg-white'}`}>
-              <h3 className="text-xl font-bold text-slate-900">{plan.name}</h3>
-              <div className="mt-3 text-3xl font-bold text-slate-900">{plan.price}<span className="text-lg text-slate-500">/tháng</span></div>
-              <ul className="mt-6 space-y-3">
-                {plan.features.map((f, j) => (
-                  <li key={j} className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="text-blue-600">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-              <button className={`mt-8 w-full rounded-lg py-2.5 font-semibold transition ${plan.popular ? 'text-white hover:opacity-90' : 'border border-slate-300 text-slate-900 hover:bg-slate-50'}`} style={plan.popular ? { background: '#120368' } : {}}>
-                {plan.name === 'Enterprise' ? 'Liên hệ' : 'Bắt đầu'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* CTA Section */}
       <section className="border-t border-slate-200 py-16 text-white" style={{ background: '#120368' }}>
         <div className="mx-auto max-w-2xl px-6 text-center">
