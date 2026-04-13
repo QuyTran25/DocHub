@@ -602,6 +602,7 @@ const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
         size: formatSize(responseBody.fileSize),
         date: responseBody.createdAt ? responseBody.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
         status: responseBody.isPublic ? 'public' : 'private',
+        topic: responseBody.topic || topic,
         tags: responseBody.hashtags
           ? responseBody.hashtags.split(',').map(tag => tag.trim()).filter(Boolean)
           : [],
@@ -1063,6 +1064,7 @@ export default function App() {
   const [pendingPublicDocumentId, setPendingPublicDocumentId] = useState(initialPublicDocumentId || null);
   const [publicShareDialog, setPublicShareDialog] = useState(null);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
+  const currentUserId = Number(currentUser?.id);
 
   const handleLogin = (account) => {
     // Lưu thông tin user vào localStorage để giữ session
@@ -1190,9 +1192,10 @@ export default function App() {
       size: `${size.toFixed(unitIndex === 0 ? 0 : 2)} ${units[unitIndex]}`,
       date: doc.createdAt ? doc.createdAt.slice(0, 10) : new Date().toISOString().slice(0, 10),
       status: doc.isPublic ? 'public' : 'private',
+      topic: doc.topic || '',
       tags: doc.hashtags ? doc.hashtags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
       ownerId: doc.ownerId,
-      owner: doc.ownerId === currentUser.id ? currentUser.username : `user-${doc.ownerId}`,
+      owner: Number(doc.ownerId) === currentUserId ? currentUser.username : `user-${doc.ownerId}`,
       deletedAt: doc.deletedAt,
       lifecycleStatus: doc.status,
     };
@@ -1341,6 +1344,199 @@ export default function App() {
   };
 
   const popularHashtags = ['#Cloud', '#AWS', '#Docker', '#React', '#Design', '#Frontend'];
+
+  const normalizeSearchText = (value) => {
+    return String(value || '')
+      .toLowerCase()
+      .replace(/[＃﹟]/g, '#')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9#\s._-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  const levenshteinDistance = (source, target) => {
+    const a = normalizeSearchText(source);
+    const b = normalizeSearchText(target);
+
+    if (a === b) {
+      return 0;
+    }
+    if (!a.length) {
+      return b.length;
+    }
+    if (!b.length) {
+      return a.length;
+    }
+
+    const previousRow = new Array(b.length + 1).fill(0).map((_, index) => index);
+    const currentRow = new Array(b.length + 1).fill(0);
+
+    for (let i = 1; i <= a.length; i += 1) {
+      currentRow[0] = i;
+      for (let j = 1; j <= b.length; j += 1) {
+        const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
+        currentRow[j] = Math.min(
+          previousRow[j] + 1,
+          currentRow[j - 1] + 1,
+          previousRow[j - 1] + substitutionCost,
+        );
+      }
+      for (let j = 0; j <= b.length; j += 1) {
+        previousRow[j] = currentRow[j];
+      }
+    }
+
+    return previousRow[b.length];
+  };
+
+  const getActiveTabFiles = () => {
+    if (activeTab === 'shared') {
+      return sharedFiles;
+    }
+    if (activeTab === 'community') {
+      return files.filter((file) => file.status === 'public');
+    }
+    if (activeTab === 'my-docs') {
+      return files.filter((file) => (file.ownerId && Number(file.ownerId) === currentUserId) || file.owner === currentUser.username);
+    }
+    if (activeTab === 'recent') {
+      return files.slice(0, 2);
+    }
+    if (activeTab === 'trash') {
+      return trashFiles;
+    }
+    return [];
+  };
+
+  const buildFileSearchValues = (file) => {
+    const rawValues = [file.name, file.topic, ...(file.tags || [])]
+      .filter(Boolean)
+      .map((value) => String(value));
+
+    return {
+      normalized: rawValues.map(normalizeSearchText),
+      raw: rawValues.map((value) => value.toLowerCase()),
+    };
+  };
+
+  const parseSearchTokens = (query) => {
+    return String(query || '')
+      .replace(/[＃﹟]/g, '#')
+      .split(/[,\s]+/)
+      .map((token) => token.trim())
+      .filter(Boolean);
+  };
+
+  const extractHashtagTerms = (queryTokens) => {
+    return queryTokens
+      .filter((token) => token.startsWith('#'))
+      .map((token) => normalizeSearchText(token).replace(/^#+/, ''))
+      .filter(Boolean);
+  };
+
+  const extractKeywordTerms = (queryTokens) => {
+    return queryTokens
+      .filter((token) => !token.startsWith('#'))
+      .map((token) => normalizeSearchText(token))
+      .filter(Boolean);
+  };
+
+  const isTokenMatchedByFile = (file, token) => {
+    const normalizedToken = normalizeSearchText(token);
+    if (!normalizedToken) {
+      return true;
+    }
+
+    const normalizedTopic = normalizeSearchText(file.topic || '');
+    const normalizedName = normalizeSearchText(file.name || '');
+    const normalizedTags = (file.tags || []).map((tag) => normalizeSearchText(tag));
+
+    if (normalizedToken.startsWith('#')) {
+      const hashtagTerm = normalizedToken.replace(/^#+/, '');
+      return normalizedTags.some((tag) => {
+        const cleanTag = tag.replace(/^#+/, '');
+        return cleanTag.includes(hashtagTerm) || tag.includes(normalizedToken);
+      });
+    }
+
+    return (
+      normalizedTopic.includes(normalizedToken)
+      || normalizedName.includes(normalizedToken)
+      || normalizedTags.some((tag) => tag.includes(normalizedToken))
+    );
+  };
+
+  const activeTabFiles = getActiveTabFiles();
+  const normalizedQuery = normalizeSearchText(searchQuery);
+  const queryTokens = parseSearchTokens(searchQuery);
+  const hashtagTerms = extractHashtagTerms(queryTokens);
+  const keywordTerms = extractKeywordTerms(queryTokens);
+  const filteredFiles = normalizedQuery
+    ? activeTabFiles.filter((file) => {
+      const normalizedName = normalizeSearchText(file.name || '');
+      const normalizedTopic = normalizeSearchText(file.topic || '');
+      const normalizedTags = (file.tags || []).map((tag) => normalizeSearchText(tag).replace(/^#+/, ''));
+
+      const hashtagMatched = hashtagTerms.length === 0
+        || hashtagTerms.every((term) => normalizedTags.some((tag) => tag.includes(term)));
+
+      const keywordMatched = keywordTerms.length === 0
+        || keywordTerms.every((term) => (
+          normalizedTopic.includes(term)
+          || normalizedName.includes(term)
+          || normalizedTags.some((tag) => tag.includes(term))
+        ));
+
+      if (hashtagMatched && keywordMatched) {
+        return true;
+      }
+
+      return isTokenMatchedByFile(file, normalizedQuery);
+    })
+    : activeTabFiles;
+
+  const closestMatchingFiles = (() => {
+    if (!normalizedQuery || filteredFiles.length > 0) {
+      return [];
+    }
+
+    return activeTabFiles
+      .map((file) => {
+        const values = buildFileSearchValues(file).normalized.filter(Boolean);
+        const bestScore = values.length > 0
+          ? Math.min(...values.map((value) => levenshteinDistance(value, normalizedQuery)))
+          : Number.MAX_SAFE_INTEGER;
+        return { file, score: bestScore };
+      })
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 3)
+      .map((entry) => entry.file);
+  })();
+
+  const uniqueSuggestionCandidates = [
+    ...new Set(activeTabFiles.flatMap((file) => [file.name, file.topic, ...(file.tags || [])].filter(Boolean))),
+  ];
+
+  const searchSuggestions = (() => {
+    if (!normalizedQuery) {
+      const hashtagHints = popularHashtags.filter((tag) => !uniqueSuggestionCandidates.includes(tag));
+      return [...uniqueSuggestionCandidates.slice(0, 6), ...hashtagHints].slice(0, 6);
+    }
+
+    const directMatches = uniqueSuggestionCandidates.filter((item) => normalizeSearchText(item).includes(normalizedQuery));
+    if (directMatches.length > 0) {
+      return directMatches.slice(0, 6);
+    }
+
+    return uniqueSuggestionCandidates
+      .map((item) => ({ item, score: levenshteinDistance(item, normalizedQuery) }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 6)
+      .map((entry) => entry.item);
+  })();
   
   const handleSearchSelect = (tag) => {
     setSearchQuery(tag);
@@ -1593,10 +1789,10 @@ export default function App() {
               {showSearchSuggestions && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                   <div className="p-3 space-y-2">
-                    <p className="text-xs font-semibold text-slate-500 uppercase px-2">Hashtag phổ biến</p>
-                    {popularHashtags.map((tag, idx) => (
+                    <p className="text-xs font-semibold text-slate-500 uppercase px-2">Gợi ý tìm kiếm</p>
+                    {searchSuggestions.map((tag, idx) => (
                       <button
-                        key={idx}
+                        key={`${tag}-${idx}`}
                         onClick={() => handleSearchSelect(tag)}
                         className="w-full text-left px-3 py-2 rounded hover:bg-slate-100 text-sm text-slate-700 transition-colors"
                       >
@@ -1766,6 +1962,11 @@ export default function App() {
                     {activeTab === 'recent' && 'Những tài liệu bạn vừa xem gần đây'}
                     {activeTab === 'trash' && 'Tài liệu bạn đã xóa sẽ tự động bị xóa sau 10 ngày'}
                   </p>
+                  {searchQuery.trim() && (
+                    <p className="text-xs font-medium text-slate-500 mt-2">
+                      Kết quả tìm kiếm: {filteredFiles.length}
+                    </p>
+                  )}
                 </div>
                 <div className="flex bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
                   <button 
@@ -1787,28 +1988,36 @@ export default function App() {
 
               {/* File Render */}
               {(() => {
-                // Lọc files dựa trên activeTab
-                let filesToDisplay = [];
-                
-                if (activeTab === 'shared') {
-                  filesToDisplay = sharedFiles;
-                } else if (activeTab === 'community') {
-                  filesToDisplay = files.filter(f => f.status === 'public');
-                } else if (activeTab === 'my-docs') {
-                  filesToDisplay = files.filter(f => (f.ownerId && f.ownerId === currentUser.id) || f.owner === currentUser.username);
-                } else if (activeTab === 'recent') {
-                  filesToDisplay = files.slice(0, 2);
-                } else if (activeTab === 'trash') {
-                  filesToDisplay = trashFiles;
-                }
+                const filesToDisplay = filteredFiles;
 
                 return (
                   <>
                     {filesToDisplay.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                         <Folder size={48} className="mb-3 opacity-30" />
-                        <p className="text-lg font-medium">Không có tài liệu</p>
-                        <p className="text-sm">{activeTab === 'trash' ? 'Thùng rác trống. Tài liệu bị xóa sẽ xuất hiện ở đây' : activeTab === 'shared' ? 'Hãy yêu cầu chia sẻ tài liệu của bạn' : 'Hãy tải lên tài liệu của bạn'}</p>
+                        <p className="text-lg font-medium">{normalizedQuery ? 'Không tìm thấy tài liệu phù hợp' : 'Không có tài liệu'}</p>
+                        <p className="text-sm">
+                          {normalizedQuery
+                            ? `Không có kết quả cho "${searchQuery}". Hãy thử từ khóa khác.`
+                            : activeTab === 'trash'
+                              ? 'Thùng rác trống. Tài liệu bị xóa sẽ xuất hiện ở đây'
+                              : activeTab === 'shared'
+                                ? 'Hãy yêu cầu chia sẻ tài liệu của bạn'
+                                : 'Hãy tải lên tài liệu của bạn'}
+                        </p>
+                        {normalizedQuery && closestMatchingFiles.length > 0 && (
+                          <div className="mt-4 flex flex-wrap justify-center gap-2">
+                            {closestMatchingFiles.map((item) => (
+                              <button
+                                key={item.id}
+                                onClick={() => handleSearchSelect(item.name)}
+                                className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                              >
+                                {item.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       viewMode === 'grid' ? (
@@ -1824,6 +2033,9 @@ export default function App() {
                       <div className="p-5">
                         <h3 className="text-base font-semibold text-slate-900 truncate mb-2 line-clamp-2" title={file.name}>{file.name}</h3>
                         <p className="text-sm text-slate-600 mb-4">{file.size} • {file.date}{activeTab === 'recent' && file.viewedTime ? ` • Xem lúc: ${file.viewedTime}` : ''}</p>
+                        {file.topic && (
+                          <p className="text-xs text-slate-500 mb-3">Chủ đề: {file.topic}</p>
+                        )}
                         
                         {/* Tags */}
                         <div className="flex flex-wrap gap-2 mb-4">
@@ -1907,6 +2119,7 @@ export default function App() {
                                 {getFileIcon(file.type)}
                                 <div>
                                   <p className="font-semibold text-slate-800">{file.name}</p>
+                                  {file.topic && <p className="text-xs text-slate-500">Chủ đề: {file.topic}</p>}
                                   <p className="text-xs text-slate-500">{file.tags?.join(' ')}</p>
                                 </div>
                               </td>
