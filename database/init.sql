@@ -120,6 +120,31 @@ INSERT INTO `users` VALUES (1,'akhoa','$2a$10$slYQmyNdGzin7olVN3p5HOpsvK9x.M0bFh
 INSERT INTO `users` VALUES (2,'qtran','$2a$10$slYQmyNdGzin7olVN3p5HOpsvK9x.M0bFh5FQVODBjB5aO2p/QPSO','qtran@university.edu','Q Trân','user','2026-03-24 13:02:28');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `share_requests`
+--
+
+DROP TABLE IF EXISTS `share_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `share_requests` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `document_id` bigint NOT NULL,
+  `requester_id` bigint NOT NULL,
+  `owner_id` bigint NOT NULL,
+  `status` varchar(20) DEFAULT 'PENDING',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_share_requests_document` (`document_id`),
+  KEY `fk_share_requests_requester` (`requester_id`),
+  KEY `fk_share_requests_owner` (`owner_id`),
+  CONSTRAINT `fk_share_requests_document` FOREIGN KEY (`document_id`) REFERENCES `documents` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_share_requests_requester` FOREIGN KEY (`requester_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_share_requests_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

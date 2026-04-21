@@ -9,6 +9,7 @@ import com.dochub.dto.LoginRequest;
 import com.dochub.dto.RegisterRequest;
 import com.dochub.model.User;
 import com.dochub.repository.UserRepository;
+import com.dochub.security.JwtTokenProvider;
 
 @Service
 public class AuthService {
@@ -18,6 +19,9 @@ public class AuthService {
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     public AuthResponse register(RegisterRequest request) {
         // Validate input
@@ -50,7 +54,8 @@ public class AuthService {
         user.setRole("user");
 
         User saved = userRepository.save(user);
-        return new AuthResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getFullName(), saved.getRole());
+        String token = jwtTokenProvider.generateToken(saved.getId(), saved.getUsername());
+        return new AuthResponse(saved.getId(), saved.getUsername(), saved.getEmail(), saved.getFullName(), saved.getRole(), token);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -64,7 +69,8 @@ public class AuthService {
         return userRepository.findByUsername(username)
             .map(user -> {
                 if (passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                    return new AuthResponse(user.getId(), user.getUsername(), user.getEmail(), user.getFullName(), user.getRole());
+                    String token = jwtTokenProvider.generateToken(user.getId(), user.getUsername());
+                    return new AuthResponse(user.getId(), user.getUsername(), user.getEmail(), user.getFullName(), user.getRole(), token);
                 } else {
                     return new AuthResponse("Tên đăng nhập hoặc mật khẩu không chính xác");
                 }
