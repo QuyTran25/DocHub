@@ -5,6 +5,7 @@ import {
   Image as ImageIcon, LayoutGrid, List, X, ShieldCheck, User, LogOut,
   Eye, EyeOff, Mail, Lock, Share2, AlertCircle, Bell, Settings
 } from 'lucide-react';
+import { apiFetch, unauthorizedEventName } from './apiClient';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, BarElement, Title, Tooltip, Legend, ArcElement
@@ -215,11 +216,11 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/login`, {
+      const res = await apiFetch(`${API_BASE}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password }),
-      });
+      }, { skipUnauthorizedHandler: true });
       const data = await res.json();
       if (res.ok && data.success) {
         onLogin(data);
@@ -247,7 +248,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/register`, {
+      const res = await apiFetch(`${API_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,7 +257,7 @@ const AuthScreen = ({ onLogin, onBackHome, initialMode = 'login' }) => {
           email: email.trim(),
           fullName: fullName.trim(),
         }),
-      });
+      }, { skipUnauthorizedHandler: true });
       const data = await res.json();
       if (res.ok && data.success) {
         setSuccessMsg('✅ Tài khoản đã được tạo! Vui lòng đăng nhập.');
@@ -568,11 +569,7 @@ const UploadModal = ({ isOpen, onClose, onUploaded, currentUser }) => {
       formData.append('isPublic', String(isPublic));
       formData.append('topic', topic);
       formData.append('hashtags', hashtags);
-      if (currentUser?.id) {
-        formData.append('ownerId', String(currentUser.id));
-      }
-
-      const response = await fetch('/api/documents/upload', {
+      const response = await apiFetch('/api/documents/upload', {
         method: 'POST',
         body: formData,
       });
@@ -804,7 +801,7 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
       setIsLoading(true);
       setError('');
 
-      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/share-link?ownerId=${currentUser.id}`, {
+      const response = await apiFetch(`/api/documents/${file.id}/share-link`, {
         method: 'POST',
       });
 
@@ -856,7 +853,7 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
       setIsLoading(true);
       setError('');
 
-      const response = await fetch(`http://localhost:8080/api/documents/${file.id}/visibility?ownerId=${currentUser.id}&isPublic=true`, {
+      const response = await apiFetch(`/api/documents/${file.id}/visibility?isPublic=true`, {
         method: 'PATCH',
       });
 
@@ -1064,6 +1061,24 @@ export default function App() {
   const [publicShareDialog, setPublicShareDialog] = useState(null);
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      setFiles([]);
+      setSharedFiles([]);
+      setTrashFiles([]);
+      setActiveTab('my-docs');
+      setAuthMode('login');
+      setShowUserDropdown(false);
+      setShowNotifications(false);
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+    };
+
+    window.addEventListener(unauthorizedEventName, handleUnauthorized);
+    return () => window.removeEventListener(unauthorizedEventName, handleUnauthorized);
+  }, []);
+
   const handleLogin = (account) => {
     // Lưu thông tin user vào localStorage để giữ session
     try { localStorage.setItem('dochub_user', JSON.stringify(account)); } catch {}
@@ -1080,7 +1095,7 @@ export default function App() {
   const confirmLogout = async () => {
     // Gọi API logout (stateless - chỉ thông báo server)
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch {}
     // Xóa session khỏi localStorage
     try { localStorage.removeItem('dochub_user'); } catch {}
@@ -1105,7 +1120,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`/api/documents/${file.id}/restore?ownerId=${currentUser.id}`, {
+      const response = await apiFetch(`/api/documents/${file.id}/restore`, {
         method: 'PATCH',
       });
 
@@ -1130,7 +1145,7 @@ export default function App() {
 
     try {
       if (action === 'shared-remove') {
-        const response = await fetch(`/api/documents/${file.id}/shared-view?userId=${currentUser.id}`, {
+        const response = await apiFetch(`/api/documents/${file.id}/shared-view`, {
           method: 'DELETE',
         });
 
@@ -1141,7 +1156,7 @@ export default function App() {
 
         await reloadSharedDocuments();
       } else if (action === 'permanent') {
-        const response = await fetch(`/api/documents/${file.id}/permanent?ownerId=${currentUser.id}`, {
+        const response = await apiFetch(`/api/documents/${file.id}/permanent`, {
           method: 'DELETE',
         });
 
@@ -1152,7 +1167,7 @@ export default function App() {
 
         await Promise.all([reloadDocuments(), reloadTrashDocuments()]);
       } else {
-        const response = await fetch(`/api/documents/${file.id}/trash?ownerId=${currentUser.id}`, {
+        const response = await apiFetch(`/api/documents/${file.id}/trash`, {
           method: 'PATCH',
         });
 
@@ -1200,7 +1215,7 @@ export default function App() {
 
   const reloadDocuments = async () => {
     try {
-      const response = await fetch('/api/documents');
+      const response = await apiFetch('/api/documents');
       if (!response.ok) {
         throw new Error('Cannot load documents');
       }
@@ -1217,7 +1232,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`/api/documents/trash?ownerId=${currentUser.id}`);
+      const response = await apiFetch('/api/documents/trash');
       if (!response.ok) {
         throw new Error('Cannot load trash documents');
       }
@@ -1234,7 +1249,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`/api/documents/shared?userId=${currentUser.id}`);
+      const response = await apiFetch('/api/documents/shared');
       if (!response.ok) {
         throw new Error('Cannot load shared documents');
       }
@@ -1256,7 +1271,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`/api/documents/${file.id}/preview-url`);
+      const response = await apiFetch(`/api/documents/${file.id}/preview-url`);
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || 'Không lấy được link xem file.');
@@ -1351,8 +1366,8 @@ export default function App() {
     setFiles((prevFiles) => [newFile, ...prevFiles]);
   };
 
-  const resolveShareTokenToPreviewUrl = async (shareToken, userId) => {
-    const response = await fetch(`http://localhost:8080/api/documents/shared/${shareToken}/preview-url?userId=${userId}`);
+  const resolveShareTokenToPreviewUrl = async (shareToken) => {
+    const response = await apiFetch(`/api/documents/shared/${shareToken}/preview-url`);
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(errorText || 'Không thể mở link chia sẻ');
@@ -1370,7 +1385,7 @@ export default function App() {
       throw new Error('Thiếu thông tin người dùng hoặc tài liệu');
     }
 
-    const response = await fetch(`http://localhost:8080/api/documents/${file.id}/visibility?ownerId=${currentUser.id}&isPublic=${isPublic}`, {
+    const response = await apiFetch(`/api/documents/${file.id}/visibility?isPublic=${isPublic}`, {
       method: 'PATCH',
     });
 
@@ -1426,7 +1441,7 @@ export default function App() {
 
     const openSharedDocument = async () => {
       try {
-        const previewUrl = await resolveShareTokenToPreviewUrl(pendingShareToken, currentUser.id);
+        const previewUrl = await resolveShareTokenToPreviewUrl(pendingShareToken);
         if (!cancelled) {
           setPendingShareToken(null);
           const params = new URLSearchParams(window.location.search);
@@ -1460,7 +1475,7 @@ export default function App() {
 
     const openPublicDocumentFromLink = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/documents/${pendingPublicDocumentId}/preview-url?userId=${currentUser.id}`);
+        const response = await apiFetch(`/api/documents/${pendingPublicDocumentId}/preview-url`);
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(errorText || 'Không thể mở link tài liệu công khai');
