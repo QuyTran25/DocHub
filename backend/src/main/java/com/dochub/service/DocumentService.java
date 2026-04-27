@@ -23,6 +23,7 @@ import com.dochub.model.Document;
 import com.dochub.model.DocumentShare;
 import com.dochub.repository.DocumentRepository;
 import com.dochub.repository.DocumentShareRepository;
+import com.dochub.security.SecurityUtils;
 
 @Service
 public class DocumentService {
@@ -56,8 +57,9 @@ public class DocumentService {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File upload is required");
         }
+        ownerId = resolveCurrentUserId(ownerId);
         if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+            throw new IllegalArgumentException("Authentication is required");
         }
 
         String key = s3Service.uploadFile(file);
@@ -90,8 +92,9 @@ public class DocumentService {
     }
 
     public List<Document> getTrashDocumentsByOwner(Long ownerId) {
+        ownerId = resolveCurrentUserId(ownerId);
         if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+            throw new IllegalArgumentException("Authentication is required");
         }
         return documentRepository.findByOwnerIdAndStatus(ownerId, Document.STATUS_TRASH)
                 .stream()
@@ -101,8 +104,9 @@ public class DocumentService {
     }
 
     public List<Document> getSharedDocuments(Long userId) {
+        userId = resolveCurrentUserId(userId);
         if (userId == null) {
-            throw new IllegalArgumentException("userId is required");
+            throw new IllegalArgumentException("Authentication is required");
         }
 
         List<DocumentShare> shares = documentShareRepository.findBySharedWithUserIdAndHiddenForRecipientFalse(userId);
@@ -235,8 +239,9 @@ public class DocumentService {
 
     @Transactional
     public void removeDocumentFromSharedView(Long documentId, Long userId) {
+        userId = resolveCurrentUserId(userId);
         if (userId == null) {
-            throw new IllegalArgumentException("userId is required");
+            throw new IllegalArgumentException("Authentication is required");
         }
 
         DocumentShare share = documentShareRepository.findByDocumentIdAndSharedWithUserId(documentId, userId)
@@ -247,6 +252,7 @@ public class DocumentService {
 
     @Transactional
     public Document shareDocumentWithUser(Long documentId, Long ownerId, Long sharedWithUserId) {
+        ownerId = resolveCurrentUserId(ownerId);
         if (sharedWithUserId == null) {
             throw new IllegalArgumentException("sharedWithUserId is required");
         }
@@ -306,6 +312,7 @@ public class DocumentService {
     }
 
     public String getPreviewUrl(Long documentId, Long userId) {
+        userId = resolveCurrentUserId(userId);
         Document document = getDocumentById(documentId);
         ensureUserCanAccessDocument(document, userId, null);
         if (s3Service.isS3StorageActive()) {
@@ -321,6 +328,7 @@ public class DocumentService {
     }
 
     public String getPreviewUrlByShareToken(String shareToken, Long userId) {
+        userId = resolveCurrentUserId(userId);
         if (shareToken == null || shareToken.isBlank()) {
             throw new IllegalArgumentException("Share token is required");
         }
@@ -357,6 +365,7 @@ public class DocumentService {
     }
 
     public Resource loadLocalDocumentResource(Long documentId, Long userId, String shareToken) {
+        userId = resolveCurrentUserId(userId);
         if (s3Service.isS3StorageActive()) {
             throw new IllegalStateException("Local resource endpoint is not available while S3 mode is enabled");
         }
@@ -435,8 +444,9 @@ public class DocumentService {
     }
 
     private Document getOwnedDocument(Long documentId, Long ownerId) {
+        ownerId = resolveCurrentUserId(ownerId);
         if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+            throw new IllegalArgumentException("Authentication is required");
         }
 
         Document document = getDocumentByIdIncludingTrash(documentId);
@@ -529,5 +539,9 @@ public class DocumentService {
 
     private int safeStatus(Document document) {
         return document.getStatus() == null ? Document.STATUS_ACTIVE : document.getStatus();
+    }
+
+    private Long resolveCurrentUserId(Long providedUserId) {
+        return providedUserId != null ? providedUserId : SecurityUtils.getCurrentUserId();
     }
 }
