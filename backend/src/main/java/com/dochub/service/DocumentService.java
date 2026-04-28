@@ -21,8 +21,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.dochub.model.Document;
 import com.dochub.model.DocumentShare;
+import com.dochub.model.User;
 import com.dochub.repository.DocumentRepository;
 import com.dochub.repository.DocumentShareRepository;
+import com.dochub.repository.UserRepository;
+import com.dochub.security.SecurityUtils;
 
 @Service
 public class DocumentService {
@@ -30,6 +33,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentShareRepository documentShareRepository;
     private final S3Service s3Service;
+    private final UserRepository userRepository;
 
     @Value("${backend.public-base-url:http://localhost:8080}")
     private String backendPublicBaseUrl;
@@ -40,10 +44,12 @@ public class DocumentService {
     public DocumentService(
             DocumentRepository documentRepository,
             DocumentShareRepository documentShareRepository,
-            S3Service s3Service) {
+            S3Service s3Service,
+            UserRepository userRepository) {
         this.documentRepository = documentRepository;
         this.documentShareRepository = documentShareRepository;
         this.s3Service = s3Service;
+        this.userRepository = userRepository;
     }
 
     public Document uploadDocument(
@@ -51,13 +57,15 @@ public class DocumentService {
             boolean isPublic,
             String topic,
             String hashtags,
-            Long ownerId) throws IOException {
+            Long providedOwnerId) throws IOException {
 
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File upload is required");
         }
+        
+        Long ownerId = SecurityUtils.getCurrentUserId();
         if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+            throw new IllegalArgumentException("User must be logged in");
         }
 
         String key = s3Service.uploadFile(file);
@@ -89,10 +97,16 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getTrashDocumentsByOwner(Long ownerId) {
-        if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+    public List<Document> getTrashDocumentsByOwner(Long providedOwnerId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("User must be logged in");
         }
+        
+        User currentUser = userRepository.findById(currentUserId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        boolean isAdmin = "admin".equalsIgnoreCase(currentUser.getRole());
+        Long ownerId = (providedOwnerId != null && isAdmin) ? providedOwnerId : currentUserId;
+
         return documentRepository.findByOwnerIdAndStatus(ownerId, Document.STATUS_TRASH)
                 .stream()
                 .filter(this::isDocumentContentAvailable)
@@ -100,9 +114,10 @@ public class DocumentService {
                 .toList();
     }
 
-    public List<Document> getSharedDocuments(Long userId) {
+    public List<Document> getSharedDocuments(Long dummyId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) {
-            throw new IllegalArgumentException("userId is required");
+            throw new IllegalArgumentException("User must be logged in");
         }
 
         List<DocumentShare> shares = documentShareRepository.findBySharedWithUserIdAndHiddenForRecipientFalse(userId);
@@ -234,9 +249,10 @@ public class DocumentService {
     }
 
     @Transactional
-    public void removeDocumentFromSharedView(Long documentId, Long userId) {
+    public void removeDocumentFromSharedView(Long documentId, Long dummyId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         if (userId == null) {
-            throw new IllegalArgumentException("userId is required");
+            throw new IllegalArgumentException("User must be logged in");
         }
 
         DocumentShare share = documentShareRepository.findByDocumentIdAndSharedWithUserId(documentId, userId)
@@ -305,7 +321,8 @@ public class DocumentService {
         return getPreviewUrl(documentId, null);
     }
 
-    public String getPreviewUrl(Long documentId, Long userId) {
+    public String getPreviewUrl(Long documentId, Long dummyId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Document document = getDocumentById(documentId);
         ensureUserCanAccessDocument(document, userId, null);
         if (s3Service.isS3StorageActive()) {
@@ -320,7 +337,8 @@ public class DocumentService {
         return normalizeBaseUrl(backendPublicBaseUrl) + "/api/documents/" + documentId + "/content" + userSuffix;
     }
 
-    public String getPreviewUrlByShareToken(String shareToken, Long userId) {
+    public String getPreviewUrlByShareToken(String shareToken, Long dummyId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         if (shareToken == null || shareToken.isBlank()) {
             throw new IllegalArgumentException("Share token is required");
         }
@@ -356,7 +374,8 @@ public class DocumentService {
         return loadLocalDocumentResource(documentId, null, null);
     }
 
-    public Resource loadLocalDocumentResource(Long documentId, Long userId, String shareToken) {
+    public Resource loadLocalDocumentResource(Long documentId, Long dummyId, String shareToken) {
+        Long userId = SecurityUtils.getCurrentUserId();
         if (s3Service.isS3StorageActive()) {
             throw new IllegalStateException("Local resource endpoint is not available while S3 mode is enabled");
         }
@@ -434,14 +453,19 @@ public class DocumentService {
         return "unknown";
     }
 
-    private Document getOwnedDocument(Long documentId, Long ownerId) {
-        if (ownerId == null) {
-            throw new IllegalArgumentException("ownerId is required");
+    private Document getOwnedDocument(Long documentId, Long providedOwnerId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new IllegalArgumentException("User must be logged in");
         }
 
+        User currentUser = userRepository.findById(currentUserId).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        boolean isAdmin = "admin".equalsIgnoreCase(currentUser.getRole());
+        Long targetOwnerId = (providedOwnerId != null && isAdmin) ? providedOwnerId : currentUserId;
+
         Document document = getDocumentByIdIncludingTrash(documentId);
-        if (document.getOwnerId() == null || !ownerId.equals(document.getOwnerId())) {
-            throw new IllegalArgumentException("Only owner can modify this document");
+        if (document.getOwnerId() == null || (!targetOwnerId.equals(document.getOwnerId()) && !isAdmin)) {
+            throw new IllegalArgumentException("Only owner or admin can modify this document");
         }
         return document;
     }

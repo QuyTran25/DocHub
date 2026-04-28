@@ -42,11 +42,10 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "isPublic", defaultValue = "false") boolean isPublic,
             @RequestParam(value = "topic", required = false) String topic,
-            @RequestParam(value = "hashtags", required = false) String hashtags,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @RequestParam(value = "hashtags", required = false) String hashtags) {
 
         try {
-            Document savedDocument = documentService.uploadDocument(file, isPublic, topic, hashtags, ownerId);
+            Document savedDocument = documentService.uploadDocument(file, isPublic, topic, hashtags, null);
             return ResponseEntity.status(HttpStatus.CREATED).body(UploadDocumentResponse.fromDocument(savedDocument));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -66,9 +65,9 @@ public class DocumentController {
     }
 
     @GetMapping("/trash")
-    public ResponseEntity<?> listTrashDocuments(@RequestParam(value = "ownerId", required = false) Long ownerId) {
+    public ResponseEntity<?> listTrashDocuments() {
         try {
-            List<UploadDocumentResponse> response = documentService.getTrashDocumentsByOwner(ownerId)
+            List<UploadDocumentResponse> response = documentService.getTrashDocumentsByOwner(null)
                     .stream()
                     .map(UploadDocumentResponse::fromDocument)
                     .toList();
@@ -79,9 +78,9 @@ public class DocumentController {
     }
 
     @GetMapping("/shared")
-    public ResponseEntity<?> listSharedDocuments(@RequestParam(value = "userId", required = false) Long userId) {
+    public ResponseEntity<?> listSharedDocuments() {
         try {
-            List<UploadDocumentResponse> response = documentService.getSharedDocuments(userId)
+            List<UploadDocumentResponse> response = documentService.getSharedDocuments(null)
                     .stream()
                     .map(UploadDocumentResponse::fromDocument)
                     .toList();
@@ -93,10 +92,9 @@ public class DocumentController {
 
     @PatchMapping("/{documentId}/trash")
     public ResponseEntity<?> moveToTrash(
-            @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @PathVariable Long documentId) {
         try {
-            Document document = documentService.softDeleteDocument(documentId, ownerId);
+            Document document = documentService.softDeleteDocument(documentId, null);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -105,10 +103,9 @@ public class DocumentController {
 
     @PatchMapping("/{documentId}/restore")
     public ResponseEntity<?> restoreDocument(
-            @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @PathVariable Long documentId) {
         try {
-            Document document = documentService.restoreDocument(documentId, ownerId);
+            Document document = documentService.restoreDocument(documentId, null);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -117,10 +114,9 @@ public class DocumentController {
 
     @DeleteMapping("/{documentId}/permanent")
     public ResponseEntity<?> permanentlyDeleteDocument(
-            @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @PathVariable Long documentId) {
         try {
-            documentService.permanentlyDeleteDocument(documentId, ownerId);
+            documentService.permanentlyDeleteDocument(documentId, null);
             return ResponseEntity.ok("Document deleted permanently");
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -132,10 +128,9 @@ public class DocumentController {
 
     @DeleteMapping("/{documentId}/shared-view")
     public ResponseEntity<?> removeFromSharedView(
-            @PathVariable Long documentId,
-            @RequestParam(value = "userId", required = false) Long userId) {
+            @PathVariable Long documentId) {
         try {
-            documentService.removeDocumentFromSharedView(documentId, userId);
+            documentService.removeDocumentFromSharedView(documentId, null);
             return ResponseEntity.ok("Removed from shared view");
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -145,10 +140,9 @@ public class DocumentController {
     @PostMapping("/{documentId}/share")
     public ResponseEntity<?> shareWithUser(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId,
             @RequestParam(value = "sharedWithUserId", required = false) Long sharedWithUserId) {
         try {
-            Document document = documentService.shareDocumentWithUser(documentId, ownerId, sharedWithUserId);
+            Document document = documentService.shareDocumentWithUser(documentId, null, sharedWithUserId);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -157,11 +151,10 @@ public class DocumentController {
 
     @PostMapping("/{documentId}/share-link")
     public ResponseEntity<?> createShareLink(
-            @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @PathVariable Long documentId) {
         try {
             Document document = documentService.getDocumentByIdIncludingTrash(documentId);
-            String url = documentService.createShareLink(documentId, ownerId);
+            String url = documentService.createShareLink(documentId, null);
             return ResponseEntity.ok(new ShareLinkResponse(url, document.getIsPublic(), true));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -170,10 +163,9 @@ public class DocumentController {
 
     @DeleteMapping("/{documentId}/share-link")
     public ResponseEntity<?> revokeShareLink(
-            @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId) {
+            @PathVariable Long documentId) {
         try {
-            documentService.revokeShareLink(documentId, ownerId);
+            documentService.revokeShareLink(documentId, null);
             return ResponseEntity.ok("Share link revoked");
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -183,10 +175,9 @@ public class DocumentController {
     @PatchMapping("/{documentId}/visibility")
     public ResponseEntity<?> updateVisibility(
             @PathVariable Long documentId,
-            @RequestParam(value = "ownerId", required = false) Long ownerId,
             @RequestParam(value = "isPublic") boolean isPublic) {
         try {
-            Document document = documentService.updateVisibility(documentId, ownerId, isPublic);
+            Document document = documentService.updateVisibility(documentId, null, isPublic);
             return ResponseEntity.ok(UploadDocumentResponse.fromDocument(document));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
@@ -195,10 +186,9 @@ public class DocumentController {
 
     @GetMapping("/{documentId}/preview-url")
     public ResponseEntity<?> getPreviewUrl(
-            @PathVariable Long documentId,
-            @RequestParam(value = "userId", required = false) Long userId) {
+            @PathVariable Long documentId) {
         try {
-            String url = documentService.getPreviewUrl(documentId, userId);
+            String url = documentService.getPreviewUrl(documentId, null);
             return ResponseEntity.ok(new PreviewUrlResponse(url));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
@@ -210,10 +200,9 @@ public class DocumentController {
 
     @GetMapping("/{documentId}/open")
     public ResponseEntity<?> openDocumentInNewTab(
-            @PathVariable Long documentId,
-            @RequestParam(value = "userId", required = false) Long userId) {
+            @PathVariable Long documentId) {
         try {
-            String url = documentService.getPreviewUrl(documentId, userId);
+            String url = documentService.getPreviewUrl(documentId, null);
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
@@ -225,10 +214,9 @@ public class DocumentController {
 
     @GetMapping("/shared/{shareToken}/open")
     public ResponseEntity<?> openDocumentByShareToken(
-            @PathVariable String shareToken,
-            @RequestParam(value = "userId", required = false) Long userId) {
+            @PathVariable String shareToken) {
         try {
-            String url = documentService.getPreviewUrlByShareToken(shareToken, userId);
+            String url = documentService.getPreviewUrlByShareToken(shareToken, null);
             return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(url)).build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
@@ -240,10 +228,9 @@ public class DocumentController {
 
     @GetMapping("/shared/{shareToken}/preview-url")
     public ResponseEntity<?> getPreviewUrlByShareToken(
-            @PathVariable String shareToken,
-            @RequestParam(value = "userId", required = false) Long userId) {
+            @PathVariable String shareToken) {
         try {
-            String url = documentService.getPreviewUrlByShareToken(shareToken, userId);
+            String url = documentService.getPreviewUrlByShareToken(shareToken, null);
             return ResponseEntity.ok(new PreviewUrlResponse(url));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
@@ -256,11 +243,10 @@ public class DocumentController {
     @GetMapping("/{documentId}/content")
     public ResponseEntity<?> streamDocumentContent(
             @PathVariable Long documentId,
-            @RequestParam(value = "userId", required = false) Long userId,
             @RequestParam(value = "shareToken", required = false) String shareToken) {
         try {
             Document document = documentService.getDocumentById(documentId);
-            Resource resource = documentService.loadLocalDocumentResource(documentId, userId, shareToken);
+            Resource resource = documentService.loadLocalDocumentResource(documentId, null, shareToken);
             String contentType = documentService.resolveContentType(documentId);
 
             ContentDisposition disposition = ContentDisposition.inline()
