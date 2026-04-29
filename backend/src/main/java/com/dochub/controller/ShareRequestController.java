@@ -1,5 +1,6 @@
 package com.dochub.controller;
 
+import com.dochub.dto.ShareRequestResponseDTO;
 import com.dochub.model.ShareRequest;
 import com.dochub.service.ShareRequestService;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,7 @@ public class ShareRequestController {
     }
 
     @GetMapping("/pending")
-    public ResponseEntity<List<ShareRequest>> getPendingRequests() {
+    public ResponseEntity<List<ShareRequestResponseDTO>> getPendingRequests() {
         return ResponseEntity.ok(shareRequestService.getPendingRequests());
     }
 

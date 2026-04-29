@@ -814,17 +814,12 @@ const ShareModal = ({ isOpen, onClose, file, currentUser, onPermissionUpdated })
       }
 
       if (responseBody.url) {
-        try {
-          const shareUrl = new URL(responseBody.url);
-          const segments = shareUrl.pathname.split('/').filter(Boolean);
-          const token = segments.length >= 4 ? segments[3] : null;
-          if (token) {
-            setShareLink(`${window.location.origin}/?shareToken=${token}`);
-          } else {
-            setShareLink(responseBody.url);
-          }
-        } catch {
-          setShareLink(responseBody.url);
+        const urlStr = responseBody.url;
+        const match = urlStr.match(/\/shared\/([^/]+)\/open/);
+        if (match && match[1]) {
+          setShareLink(`${window.location.origin}/?shareToken=${match[1]}`);
+        } else {
+          setShareLink(urlStr.startsWith('http') ? urlStr : `${window.location.origin}${urlStr.startsWith('/') ? '' : '/'}${urlStr}`);
         }
       } else {
         setShareLink('');
@@ -1049,7 +1044,7 @@ export default function App() {
   const [logoutConfirm, setLogoutConfirm] = useState(false);
   const [fileToView, setFileToView] = useState(null);
   const [permissionChange, setPermissionChange] = useState(null);
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState([]);
   const [requestShareFile, setRequestShareFile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
@@ -1270,6 +1265,31 @@ export default function App() {
     }
   };
 
+  const reloadPendingShareRequests = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const response = await apiFetch('/api/share-requests/pending');
+      if (response.ok) {
+        const data = await response.json();
+        const mapped = data.map(req => ({
+          id: req.id,
+          userId: req.requesterId,
+          type: 'share_request',
+          from: req.requesterName,
+          fromUsername: `user-${req.requesterId}`,
+          message: `${req.requesterName} xin quyền chia sẻ tài liệu "${req.documentName}"`,
+          fileId: req.documentId,
+          fileName: req.documentName, 
+          status: 'unread',
+          createdAt: req.createdAt
+        }));
+        setNotifications(mapped);
+      }
+    } catch {
+      console.error('Failed to load pending share requests');
+    }
+  };
+
   const getPreviewErrorMessage = (status, fallbackMessage) => {
     if (status === 403) {
       return 'Bạn không có quyền xem tài liệu này.';
@@ -1298,7 +1318,13 @@ export default function App() {
         throw new Error('Link xem file không hợp lệ hoặc đã hết hiệu lực.');
       }
 
-      window.open(body.url, '_blank', 'noopener,noreferrer');
+      let previewUrl = body.url;
+      const authData = JSON.parse(localStorage.getItem('dochub_user') || '{}');
+      if (authData.token && !previewUrl.includes('token=')) {
+        previewUrl += (previewUrl.includes('?') ? '&' : '?') + `token=${authData.token}`;
+      }
+
+      window.open(previewUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       const normalizedMessage = (error?.message || '')
         .replace('Bai viet goc da bi xoa, vui long doi khoi phuc', 'Bài viết gốc đã bị xóa, vui lòng đợi khôi phục');
@@ -1343,32 +1369,65 @@ export default function App() {
     setRequestShareFile(file);
   };
 
-  const confirmRequestPermission = () => {
-    if (requestShareFile) {
-      // Add to pending notifications
-      const newNotification = {
-        id: Math.max(0, ...notifications.map(n => n.id)) + 1,
-        userId: requestShareFile.ownerId || 1,
-        type: 'share_request',
-        from: currentUser.fullName,
-        fromUsername: currentUser.username,
-        message: currentUser.fullName + ' yêu cầu quyền chia sẻ file "' + requestShareFile.name + '"',
-        fileId: requestShareFile.id,
-        fileName: requestShareFile.name,
-        status: 'unread',
-        createdAt: new Date().toISOString()
-      };
-      setNotifications([...notifications, newNotification]);
+  const confirmRequestPermission = async () => {
+    if (!requestShareFile) return;
+
+    try {
+      const response = await apiFetch(`/api/share-requests?documentId=${requestShareFile.id}`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Không thể tạo yêu cầu chia sẻ');
+      }
+      alert('Đã gửi yêu cầu xin quyền chia sẻ thành công!');
+    } catch (error) {
+      alert(`Xin quyền thất bại: ${error.message}`);
+    } finally {
       setRequestShareFile(null);
     }
   };
 
-  const handleApproveRequest = (notificationId) => {
-    setNotifications(notifications.filter(n => n.id !== notificationId));
+  const handleApproveRequest = async (notificationId) => {
+    console.log('✅ handleApproveRequest called with id:', notificationId);
+    try {
+      const url = `/api/share-requests/${notificationId}/approve`;
+      console.log('📤 Sending POST to:', url);
+      const response = await apiFetch(url, { method: 'POST' });
+      console.log('📥 Response status:', response.status, response.ok);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API error:', errorText);
+        throw new Error('Không thể duyệt yêu cầu');
+      }
+      const data = await response.json();
+      console.log('✅ Approve success:', data);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (e) {
+      console.error('❌ Exception:', e);
+      alert(`Duyệt thất bại: ${e.message}`);
+    }
   };
 
-  const handleRejectRequest = (notificationId) => {
-    setNotifications(notifications.filter(n => n.id !== notificationId));
+  const handleRejectRequest = async (notificationId) => {
+    console.log('✅ handleRejectRequest called with id:', notificationId);
+    try {
+      const url = `/api/share-requests/${notificationId}/reject`;
+      console.log('📤 Sending POST to:', url);
+      const response = await apiFetch(url, { method: 'POST' });
+      console.log('📥 Response status:', response.status, response.ok);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API error:', errorText);
+        throw new Error('Không thể từ chối yêu cầu');
+      }
+      const data = await response.json();
+      console.log('✅ Reject success:', data);
+      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    } catch (e) {
+      console.error('❌ Exception:', e);
+      alert(`Từ chối thất bại: ${e.message}`);
+    }
   };
 
   const popularHashtags = ['#Cloud', '#AWS', '#Docker', '#React', '#Design', '#Frontend'];
@@ -1393,7 +1452,13 @@ export default function App() {
     if (!body?.url) {
       throw new Error('Link chia sẻ không hợp lệ hoặc đã hết hiệu lực');
     }
-    return body.url;
+    
+    let previewUrl = body.url;
+    const authData = JSON.parse(localStorage.getItem('dochub_user') || '{}');
+    if (authData.token && !previewUrl.includes('token=')) {
+      previewUrl += (previewUrl.includes('?') ? '&' : '?') + `token=${authData.token}`;
+    }
+    return previewUrl;
   };
 
   const updateDocumentVisibility = async (file, isPublic) => {
@@ -1436,6 +1501,7 @@ export default function App() {
     reloadDocuments();
     reloadTrashDocuments();
     reloadSharedDocuments();
+    reloadPendingShareRequests();
   }, [isAuthenticated, currentUser]);
 
   useEffect(() => {
@@ -1509,7 +1575,14 @@ export default function App() {
           params.delete('shareToken');
           const nextQuery = params.toString();
           window.history.replaceState({}, '', `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}`);
-          window.location.assign(body.url);
+          
+          let previewUrl = body.url;
+          const authData = JSON.parse(localStorage.getItem('dochub_user') || '{}');
+          if (authData.token && !previewUrl.includes('token=')) {
+            previewUrl += (previewUrl.includes('?') ? '&' : '?') + `token=${authData.token}`;
+          }
+          
+          window.location.assign(previewUrl);
         }
       } catch (error) {
         if (!cancelled) {
@@ -1653,7 +1726,10 @@ export default function App() {
                   )}
                 </button>
                 {showNotifications && notifications.length > 0 && (
-                  <div className="absolute top-full right-0 mt-2 w-96 bg-white border border-slate-200 rounded-lg shadow-2xl z-50">
+                  <div 
+                    className="absolute top-full right-0 mt-2 w-96 bg-white border border-slate-200 rounded-lg shadow-2xl z-50"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="p-4 border-b border-slate-100">
                       <h3 className="font-semibold text-slate-800">Thông báo ({notifications.length})</h3>
                     </div>
@@ -1674,14 +1750,26 @@ export default function App() {
                               </div>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => handleApproveRequest(notif.id)}
-                                  className="flex-1 px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('✅ Approve clicked for:', notif.id);
+                                    handleApproveRequest(notif.id);
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 transition-colors cursor-pointer"
                                 >
                                   Đồng ý
                                 </button>
                                 <button
-                                  onClick={() => handleRejectRequest(notif.id)}
-                                  className="flex-1 px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 transition-colors"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('✅ Reject clicked for:', notif.id);
+                                    handleRejectRequest(notif.id);
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 transition-colors cursor-pointer"
                                 >
                                   Từ chối
                                 </button>
@@ -1881,13 +1969,13 @@ export default function App() {
                           <button onClick={() => handleViewFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                             <Eye size={12} /> Xem
                           </button>
-                          {activeTab === 'shared' ? (
-                            <button onClick={() => handleRequestSharePermission(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
-                              <Share2 size={12} /> Yêu cầu
-                            </button>
-                          ) : activeTab === 'trash' ? (
+                          {activeTab === 'trash' ? (
                             <button onClick={() => restoreFile(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
                               <Folder size={12} /> Khôi phục
+                            </button>
+                          ) : (file.ownerId && file.ownerId !== currentUser?.id) || (file.owner && file.owner !== currentUser?.username) ? (
+                            <button onClick={() => handleRequestSharePermission(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
+                              <Share2 size={12} /> Xin Quyền
                             </button>
                           ) : (
                             <button onClick={() => handleShareClick(file)} className="flex-1 min-w-12 bg-slate-50 py-2.5 rounded text-xs font-medium flex justify-center items-center gap-1 transition-colors border border-slate-200" style={{ color: '#120368' }} onMouseEnter={(e) => e.currentTarget.style.background = '#E0EAFA'} onMouseLeave={(e) => e.currentTarget.style.background = 'rgb(248, 250, 252)'}>
@@ -2246,7 +2334,7 @@ export default function App() {
                 <Share2 size={24} className="text-blue-600" />
               </div>
               <h3 className="text-xl font-bold text-slate-800">Yêu cầu quyền chia sẻ?</h3>
-              <p className="text-slate-600">Bạn muốn gửi yêu cầu xin quyền chia sẻ tài liệu <strong>"{requestShareFile.name}"</strong> đến <strong>{requestShareFile.sharedBy}</strong>?</p>
+              <p className="text-slate-600">Bạn muốn gửi yêu cầu xin quyền chia sẻ tài liệu <strong>"{requestShareFile.name}"</strong> đến <strong>{requestShareFile.sharedBy || requestShareFile.owner || 'chủ sở hữu'}</strong>?</p>
               <p className="text-xs text-slate-500 bg-blue-50 p-3 rounded border border-blue-200">
                 💡 Chủ sở hữu sẽ nhận được thông báo và có thể phê duyệt yêu cầu của bạn.
               </p>

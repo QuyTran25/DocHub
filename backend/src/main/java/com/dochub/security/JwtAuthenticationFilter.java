@@ -50,6 +50,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             return bearerToken.substring(7);
         }
+        
+        // Hỗ trợ lấy token từ URL query parameter (ví dụ: ?token=abc) cho trường hợp tải/xem file trực tiếp trên trình duyệt
+        String queryToken = request.getParameter("token");
+        if (StringUtils.hasText(queryToken)) {
+            return queryToken;
+        }
+        
         return null;
     }
 }

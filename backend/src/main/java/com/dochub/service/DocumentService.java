@@ -35,7 +35,7 @@ public class DocumentService {
     private final S3Service s3Service;
     private final UserRepository userRepository;
 
-    @Value("${backend.public-base-url:http://localhost:8080}")
+    @Value("${backend.public-base-url:}")
     private String backendPublicBaseUrl;
 
     @Value("${documents.share.link-expiration-minutes:60}")
@@ -333,8 +333,7 @@ public class DocumentService {
             throw new IllegalArgumentException("Document content not found. Please upload the file again.");
         }
 
-        String userSuffix = userId == null ? "" : "?userId=" + userId;
-        return normalizeBaseUrl(backendPublicBaseUrl) + "/api/documents/" + documentId + "/content" + userSuffix;
+        return normalizeBaseUrl(backendPublicBaseUrl) + "/api/documents/" + documentId + "/content";
     }
 
     public String getPreviewUrlByShareToken(String shareToken, Long dummyId) {
@@ -365,9 +364,7 @@ public class DocumentService {
             + "/api/documents/"
             + document.getId()
             + "/content?shareToken="
-            + shareToken
-            + "&userId="
-            + userId;
+            + shareToken;
     }
 
     public Resource loadLocalDocumentResource(Long documentId) {
@@ -421,7 +418,7 @@ public class DocumentService {
 
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            return "http://localhost:8080";
+            return "";
         }
         return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
